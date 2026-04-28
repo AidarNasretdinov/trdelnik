@@ -6,879 +6,562 @@
 <title>Трдельник — Меню</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-  :root {
-    --yellow: #FFE300;
-    --yellow-dark: #C8B400;
-    --bg: #ffffff;
-    --surface: #f2f2f2;
-    --text: #1a1a1a;
-    --text-muted: #999;
-    --red: #DA291C;
-    --radius: 16px;
-  }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    padding-bottom: 130px;
-    overflow-x: hidden;
-  }
-
-  .header {
-    padding: 20px 20px 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .logo {
-    font-size: 22px;
-    font-weight: 900;
-    color: var(--yellow-dark);
-    letter-spacing: -0.5px;
-  }
-
-  .greeting {
-    padding: 14px 20px 20px;
-  }
-
-  .greeting h1 {
-    font-size: 30px;
-    font-weight: 900;
-    line-height: 1.1;
-    color: var(--text);
-  }
-
-  .greeting h1 span { font-weight: 400; }
-
-  /* Category grid — 2×2, all clickable */
-  .categories {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    padding: 0 20px 28px;
-  }
-
-  .cat-card {
-    background: var(--surface);
-    border-radius: var(--radius);
-    padding: 14px 14px 12px;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    min-height: 108px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    border: 2.5px solid transparent;
-    transition: border-color 0.15s, background 0.15s, transform 0.1s;
-    user-select: none;
-  }
-
-  .cat-card:active { transform: scale(0.96); }
-
-  /* Active state — yellow highlight */
-  .cat-card.active {
-    background: var(--yellow);
-    border-color: var(--yellow-dark);
-  }
-
-  .cat-card.active .cat-name { color: #1a1a1a; }
-  .cat-card.active .cat-count { background: rgba(0,0,0,0.12); color: #1a1a1a; }
-
-  /* Red featured — only when NOT active */
-  .cat-card.red-default:not(.active) {
-    background: var(--red);
-  }
-  .cat-card.red-default:not(.active) .cat-name { color: white; }
-  .cat-card.red-default:not(.active) .cat-count { background: rgba(255,255,255,0.25); color: white; }
-
-  .cat-icon {
-    font-size: 40px;
-    position: absolute;
-    top: 8px;
-    right: 10px;
-  }
-
-  .cat-name {
-    font-size: 14px;
-    font-weight: 800;
-    color: var(--text);
-    line-height: 1.25;
-  }
-
-  .cat-count {
-    display: inline-block;
-    margin-top: 5px;
-    background: rgba(0,0,0,0.07);
-    color: var(--text-muted);
-    font-size: 11px;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 8px;
-    width: fit-content;
-  }
-
-  /* Section title */
-  .section-header {
-    padding: 0 20px 14px;
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-  }
-
-  .section-title {
-    font-size: 24px;
-    font-weight: 900;
-    color: var(--text);
-  }
-
-  .section-count {
-    font-size: 14px;
-    color: var(--text-muted);
-    font-weight: 500;
-  }
-
-  /* Product list */
-  .products {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 0 20px;
-  }
-
-  .product-card {
-    background: var(--bg);
-    border-radius: var(--radius);
-    border: 1.5px solid #e8e8e8;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px;
-    transition: opacity 0.2s;
-  }
-
-  .product-img {
-    width: 70px;
-    height: 70px;
-    border-radius: 12px;
-    flex-shrink: 0;
-    background: var(--surface);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 34px;
-  }
-
-  .product-info { flex: 1; min-width: 0; }
-
-  .product-new {
-    font-size: 10px;
-    font-weight: 800;
-    color: var(--red);
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    margin-bottom: 2px;
-  }
-
-  .product-name {
-    font-size: 14px;
-    font-weight: 800;
-    margin-bottom: 3px;
-    color: var(--text);
-    line-height: 1.2;
-  }
-
-  .product-desc {
-    font-size: 11.5px;
-    color: var(--text-muted);
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .product-price {
-    font-size: 15px;
-    font-weight: 900;
-    color: var(--text);
-    margin-top: 5px;
-  }
-
-  /* Qty controls */
-  .qty-control {
-    display: flex;
-    align-items: center;
-    background: var(--surface);
-    border-radius: 20px;
-    overflow: hidden;
-    flex-shrink: 0;
-  }
-
-  .qty-btn {
-    width: 30px;
-    height: 30px;
-    border: none;
-    background: transparent;
-    font-size: 17px;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text);
-  }
-
-  .qty-btn.plus {
-    background: var(--yellow);
-    border-radius: 50%;
-  }
-
-  .qty-btn:active { opacity: 0.6; }
-
-  .qty-num {
-    font-size: 13px;
-    font-weight: 800;
-    min-width: 18px;
-    text-align: center;
-    color: var(--text);
-  }
-
-  .add-btn {
-    width: 30px;
-    height: 30px;
-    background: var(--yellow);
-    border: none;
-    border-radius: 50%;
-    font-size: 19px;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text);
-    flex-shrink: 0;
-  }
-
-  .add-btn:active { transform: scale(0.88); }
-
-  /* Fade animation for list */
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .products .product-card {
-    animation: fadeIn 0.18s ease both;
-  }
-
-  /* Bottom cart bar */
-  .cart-bar {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    padding: 10px 20px 28px;
-    background: var(--bg);
-    border-top: 1px solid #ebebeb;
-    display: none;
-    z-index: 100;
-  }
-
-  .cart-bar.visible { display: block; }
-
-  .cart-btn {
-    width: 100%;
-    background: var(--yellow);
-    border: none;
-    border-radius: 14px;
-    padding: 15px 18px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    cursor: pointer;
-  }
-
-  .cart-btn:active { opacity: 0.85; }
-
-  .cart-btn-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .cart-badge {
-    background: var(--text);
-    color: var(--yellow);
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    font-size: 12px;
-    font-weight: 800;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .cart-label {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--text);
-  }
-
-  .cart-total {
-    font-size: 15px;
-    font-weight: 900;
-    color: var(--text);
-  }
-
-  /* Modal */
-  .modal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.45);
-    z-index: 200;
-    align-items: flex-end;
-  }
-
-  .modal-overlay.open { display: flex; }
-
-  .modal {
-    background: var(--bg);
-    border-radius: 22px 22px 0 0;
-    width: 100%;
-    max-height: 78vh;
-    overflow-y: auto;
-    padding: 16px 20px 40px;
-  }
-
-  .modal-handle {
-    width: 34px;
-    height: 4px;
-    background: #ddd;
-    border-radius: 2px;
-    margin: 0 auto 18px;
-  }
-
-  .modal-title {
-    font-size: 20px;
-    font-weight: 900;
-    margin-bottom: 3px;
-  }
-
-  .modal-subtitle {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-bottom: 18px;
-  }
-
-  .order-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 0;
-    border-bottom: 1px solid #f0f0f0;
-  }
-
-  .order-item-icon {
-    font-size: 26px;
-    width: 42px;
-    height: 42px;
-    background: var(--surface);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .order-item-name { flex: 1; font-size: 13px; font-weight: 600; }
-  .order-item-price { font-size: 13px; font-weight: 700; }
-
-  .order-total-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 0 18px;
-  }
-
-  .order-total-label { font-size: 15px; color: var(--text-muted); }
-  .order-total-amount { font-size: 26px; font-weight: 900; }
-
-  .order-btn {
-    width: 100%;
-    background: var(--yellow);
-    border: none;
-    border-radius: 14px;
-    padding: 17px;
-    font-size: 16px;
-    font-weight: 800;
-    cursor: pointer;
-    color: var(--text);
-  }
-
-  /* Product detail bottom sheet */
-  .detail-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 300;
-    align-items: flex-end;
-  }
-
-  .detail-overlay.open { display: flex; }
-
-  @keyframes slideUp {
-    from { transform: translateY(100%); }
-    to   { transform: translateY(0); }
-  }
-
-  .detail-sheet {
-    background: var(--bg);
-    border-radius: 24px 24px 0 0;
-    width: 100%;
-    max-height: 85vh;
-    overflow-y: auto;
-    animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
-  }
-
-  .detail-hero {
-    background: var(--surface);
-    border-radius: 24px 24px 0 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 200px;
-    font-size: 96px;
-    position: relative;
-  }
-
-  .detail-close {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    width: 32px;
-    height: 32px;
-    background: rgba(0,0,0,0.12);
-    border: none;
-    border-radius: 50%;
-    font-size: 16px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text);
-    font-weight: 700;
-  }
-
-  .detail-body {
-    padding: 20px 20px 36px;
-  }
-
-  .detail-new {
-    font-size: 11px;
-    font-weight: 800;
-    color: var(--red);
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    margin-bottom: 4px;
-  }
-
-  .detail-name {
-    font-size: 24px;
-    font-weight: 900;
-    line-height: 1.15;
-    margin-bottom: 6px;
-  }
-
-  .detail-price {
-    font-size: 22px;
-    font-weight: 900;
-    color: var(--text);
-    margin-bottom: 18px;
-  }
-
-  .detail-section-label {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--text-muted);
-    margin-bottom: 10px;
-  }
-
-  .ingredient-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 28px;
-  }
-
-  .ingredient-pill {
-    background: var(--surface);
-    border-radius: 20px;
-    padding: 6px 13px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text);
-  }
-
-  .detail-add-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .detail-add-btn {
-    flex: 1;
-    background: var(--yellow);
-    border: none;
-    border-radius: 14px;
-    padding: 16px;
-    font-size: 16px;
-    font-weight: 800;
-    cursor: pointer;
-    color: var(--text);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-
-  .detail-add-btn:active { opacity: 0.8; }
-
-  .detail-qty-control {
-    display: flex;
-    align-items: center;
-    background: var(--surface);
-    border-radius: 14px;
-    overflow: hidden;
-    flex: 1;
-    justify-content: space-between;
-  }
-
-  .detail-qty-btn {
-    width: 50px;
-    height: 52px;
-    border: none;
-    background: transparent;
-    font-size: 20px;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text);
-  }
-
-  .detail-qty-btn.dplus { background: var(--yellow); }
-  .detail-qty-btn:active { opacity: 0.6; }
-
-  .detail-qty-num {
-    font-size: 18px;
-    font-weight: 900;
-    color: var(--text);
-  }
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--y:#FFE300;--yd:#C8B400;--bg:#fff;--sf:#f2f2f2;--tx:#1a1a1a;--mu:#999;--red:#DA291C;--r:16px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;padding-bottom:130px;overflow-x:hidden}
+
+.header{padding:20px 20px 0;display:flex;justify-content:space-between;align-items:center}
+.logo{font-size:22px;font-weight:900;color:var(--yd);letter-spacing:-.5px}
+.greeting{padding:14px 20px 18px}
+.greeting h1{font-size:30px;font-weight:900;line-height:1.1}
+.greeting h1 span{font-weight:400}
+
+/* wide cards */
+.wide-card{margin:0 20px 10px;background:var(--sf);border-radius:var(--r);padding:14px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border:2.5px solid transparent;transition:background .15s,border-color .15s,transform .1s;user-select:none}
+.wide-card:active{transform:scale(.98)}
+.wide-card.active{background:var(--y);border-color:var(--yd)}
+.wide-card.active .wl,.wide-card.active .wa{color:#1a1a1a}
+.wide-card.active .wb{background:rgba(0,0,0,.12);color:#1a1a1a}
+.wide-card.dark{background:#1a1a1a}
+.wide-card.dark .wl{color:#fff}
+.wide-card.dark .wb{background:var(--y);color:#1a1a1a}
+.wide-card.dark .wa{color:rgba(255,255,255,.4)}
+.wleft{display:flex;align-items:center;gap:10px}
+.wi{font-size:26px}.wl{font-size:16px;font-weight:800}
+.wright{display:flex;align-items:center;gap:8px}
+.wb{background:rgba(0,0,0,.07);color:var(--mu);font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
+.wa{font-size:16px;color:var(--mu)}
+
+/* grid */
+.categories{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px 16px}
+.cat-card{background:var(--sf);border-radius:var(--r);padding:14px 14px 12px;cursor:pointer;position:relative;overflow:hidden;min-height:100px;display:flex;flex-direction:column;justify-content:flex-end;border:2.5px solid transparent;transition:background .15s,border-color .15s,transform .1s;user-select:none}
+.cat-card:active{transform:scale(.96)}
+.cat-card.active{background:var(--y);border-color:var(--yd)}
+.cat-card.active .cn,.cat-card.active .cc{color:#1a1a1a}
+.cat-card.active .cc{background:rgba(0,0,0,.12)}
+.cat-card.red:not(.active){background:var(--red)}
+.cat-card.red:not(.active) .cn{color:#fff}
+.cat-card.red:not(.active) .cc{background:rgba(255,255,255,.25);color:#fff}
+.ci{font-size:38px;position:absolute;top:8px;right:10px}
+.cn{font-size:13px;font-weight:800;line-height:1.25}
+.cc{display:inline-block;margin-top:5px;background:rgba(0,0,0,.07);color:var(--mu);font-size:11px;font-weight:600;padding:3px 8px;border-radius:8px;width:fit-content}
+
+/* section */
+.sec-hdr{padding:4px 20px 14px;display:flex;align-items:baseline;gap:8px}
+.sec-t{font-size:24px;font-weight:900}
+.sec-c{font-size:14px;color:var(--mu);font-weight:500}
+
+/* products */
+.products{display:flex;flex-direction:column;gap:10px;padding:0 20px}
+.pcard{background:var(--bg);border-radius:var(--r);border:1.5px solid #e8e8e8;display:flex;align-items:center;gap:12px;padding:12px;cursor:pointer}
+.pimg{width:70px;height:70px;border-radius:12px;flex-shrink:0;background:var(--sf);display:flex;align-items:center;justify-content:center;font-size:34px}
+.pinfo{flex:1;min-width:0}
+.pnew{font-size:10px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px}
+.pname{font-size:14px;font-weight:800;margin-bottom:3px;line-height:1.2}
+.pdesc{font-size:11.5px;color:var(--mu);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pprice{font-size:15px;font-weight:900;margin-top:5px}
+.qty-ctrl{display:flex;align-items:center;background:var(--sf);border-radius:20px;overflow:hidden;flex-shrink:0}
+.qbtn{width:30px;height:30px;border:none;background:transparent;font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--tx)}
+.qbtn.plus{background:var(--y);border-radius:50%}
+.qbtn:active{opacity:.6}
+.qnum{font-size:13px;font-weight:800;min-width:18px;text-align:center}
+.addbtn{width:30px;height:30px;background:var(--y);border:none;border-radius:50%;font-size:19px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.addbtn:active{transform:scale(.88)}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.products .pcard{animation:fi .18s ease both}
+
+/* cart bar */
+.cart-bar{position:fixed;bottom:0;left:0;right:0;padding:10px 20px 28px;background:var(--bg);border-top:1px solid #ebebeb;display:none;z-index:100}
+.cart-bar.visible{display:block}
+.cbtn{width:100%;background:var(--y);border:none;border-radius:14px;padding:15px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.cbtn:active{opacity:.85}
+.cbtnl{display:flex;align-items:center;gap:10px}
+.cbadge{background:var(--tx);color:var(--y);width:24px;height:24px;border-radius:50%;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.clabel,.ctotal{font-size:15px;font-weight:700}
+
+/* overlays */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);align-items:flex-end}
+.overlay.open{display:flex}
+@keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet{background:var(--bg);border-radius:22px 22px 0 0;width:100%;max-height:84vh;overflow-y:auto;padding:16px 20px 40px;animation:su .26s cubic-bezier(.32,.72,0,1) both}
+.hdl{width:34px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 18px}
+.stitle{font-size:20px;font-weight:900;margin-bottom:3px}
+.ssub{font-size:12px;color:var(--mu);margin-bottom:18px}
+
+/* order items */
+.oitem{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0}
+.oicon{font-size:24px;width:40px;height:40px;background:var(--sf);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.oinfo{flex:1;min-width:0}
+.oname{font-size:13px;font-weight:600}
+.odesc{font-size:11px;color:var(--mu);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.oprice{font-size:13px;font-weight:700;flex-shrink:0}
+.odel{background:none;border:none;width:26px;height:26px;border-radius:50%;background:var(--sf);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--mu)}
+.odel:active{opacity:.6}
+.oitem.editable{cursor:pointer;-webkit-tap-highlight-color:rgba(255,227,0,.18)}
+.oitem.editable:active{background:rgba(255,227,0,.12);border-radius:12px;margin:-4px;padding:14px 4px}
+.total-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0 18px}
+.total-lbl{font-size:15px;color:var(--mu)}
+.total-amt{font-size:26px;font-weight:900}
+.ybtn{width:100%;background:var(--y);border:none;border-radius:14px;padding:17px;font-size:16px;font-weight:800;cursor:pointer;color:var(--tx)}
+.ybtn:active{opacity:.85}
+.ybtn:disabled{background:#e0e0e0;color:#aaa;cursor:default}
+
+/* contact form */
+.fld{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.flbl{font-size:12px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.5px}
+.finput{background:var(--sf);border:1.5px solid transparent;border-radius:12px;padding:14px 16px;font-size:16px;font-family:inherit;color:var(--tx);outline:none;transition:border-color .15s;width:100%}
+.finput:focus{border-color:var(--yd);background:#fff}
+.finput::placeholder{color:#bbb}
+.ferr{font-size:12px;color:var(--red);margin-top:2px;display:none}
+.ferr.show{display:block}
+
+/* detail */
+.dov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-end}
+.dov.open{display:flex}
+.dsh{background:var(--bg);border-radius:24px 24px 0 0;width:100%;max-height:85vh;overflow-y:auto;animation:su .28s cubic-bezier(.32,.72,0,1) both}
+.dhero{background:var(--sf);border-radius:24px 24px 0 0;display:flex;align-items:center;justify-content:center;height:190px;font-size:90px;position:relative}
+.dclose{position:absolute;top:14px;right:14px;width:32px;height:32px;background:rgba(0,0,0,.12);border:none;border-radius:50%;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.dbody{padding:20px 20px 36px}
+.dnew{font-size:11px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+.dname{font-size:24px;font-weight:900;line-height:1.15;margin-bottom:6px}
+.dprice{font-size:22px;font-weight:900;margin-bottom:18px}
+.dsec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--mu);margin-bottom:10px}
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px}
+.pill{background:var(--sf);border-radius:20px;padding:6px 13px;font-size:13px;font-weight:500}
+.darow{display:flex;gap:12px}
+.dabtn{flex:1;background:var(--y);border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.dabtn:active{opacity:.8}
+.dqctrl{display:flex;align-items:center;background:var(--sf);border-radius:14px;flex:1;justify-content:space-between;overflow:hidden}
+.dqbtn{width:52px;height:52px;border:none;background:transparent;font-size:22px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.dqbtn.plus{background:var(--y)}
+.dqbtn:active{opacity:.6}
+.dqnum{font-size:18px;font-weight:900}
+
+/* builder */
+.bov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;align-items:flex-end}
+.bov.open{display:flex}
+.bsh{background:var(--bg);border-radius:24px 24px 0 0;width:100%;max-height:90vh;overflow-y:auto;animation:su .28s cubic-bezier(.32,.72,0,1) both;padding:16px 20px 40px}
+.bsec{margin-bottom:22px}
+.bshdr{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+.bst{font-size:16px;font-weight:800}
+.bsp{font-size:13px;font-weight:700;color:var(--mu)}
+.bsreq{font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin-left:6px}
+.bsnote{font-size:11px;color:var(--mu);margin-bottom:10px}
+.ogrid{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:9px 16px;border-radius:20px;background:var(--sf);border:2px solid transparent;font-size:13px;font-weight:600;cursor:pointer;transition:background .12s,border-color .12s,transform .08s;user-select:none}
+.chip:active{transform:scale(.95)}
+.chip.sel{background:var(--y);border-color:var(--yd);color:#1a1a1a}
+.chip.disabled{opacity:.4;cursor:default}
+.bsum{background:var(--sf);border-radius:var(--r);padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.bsuml{font-size:13px;color:var(--mu)}
+.bsump{font-size:22px;font-weight:900}
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="logo">Трдельник</div>
-  <div style="font-size: 22px;">🇷🇺</div>
+<div class="header"><div class="logo">Трдельник</div><div style="font-size:22px">🇷🇺</div></div>
+<div class="greeting"><h1>Привет,<br><span>что закажем?</span></h1></div>
+
+<!-- Все трдельники -->
+<div class="wide-card" id="cat-all" onclick="selectCat('all')">
+  <div class="wleft"><span class="wi">🥐</span><span class="wl">Все трдельники</span></div>
+  <div class="wright"><span class="wb">10 позиций</span><span class="wa">›</span></div>
 </div>
 
-<div class="greeting">
-  <h1>Привет,<br><span>что закажем?</span></h1>
-</div>
-
-<!-- 4 category cards — act as filters -->
+<!-- 2×2 -->
 <div class="categories">
-  <div class="cat-card red-default active" id="cat-sweet" onclick="selectCategory('sweet')">
-    <div class="cat-icon">🍬</div>
-    <div class="cat-name">Сладкие трдельники</div>
-    <span class="cat-count">4 позиции</span>
+  <div class="cat-card red active" id="cat-sweet" onclick="selectCat('sweet')">
+    <div class="ci">🍬</div><div class="cn">Сладкие</div><span class="cc">4 позиции</span>
   </div>
-  <div class="cat-card" id="cat-savory" onclick="selectCategory('savory')">
-    <div class="cat-icon">🥩</div>
-    <div class="cat-name">Сытные трдельники</div>
-    <span class="cat-count">6 позиций</span>
+  <div class="cat-card" id="cat-savory" onclick="selectCat('savory')">
+    <div class="ci">🥩</div><div class="cn">Сытные</div><span class="cc">6 позиций</span>
   </div>
-  <div class="cat-card" id="cat-icecream" onclick="selectCategory('icecream')">
-    <div class="cat-icon">🍦</div>
-    <div class="cat-name">С мороженым</div>
-    <span class="cat-count">3 позиции</span>
+  <div class="cat-card" id="cat-icecream" onclick="selectCat('icecream')">
+    <div class="ci">🍦</div><div class="cn">С мороженым</div><span class="cc">3 позиции</span>
   </div>
-  <div class="cat-card" id="cat-new" onclick="selectCategory('new')">
-    <div class="cat-icon">🆕</div>
-    <div class="cat-name">Новинки</div>
-    <span class="cat-count">2 позиции</span>
+  <div class="cat-card" id="cat-new" onclick="selectCat('new')">
+    <div class="ci">🆕</div><div class="cn">Новинки</div><span class="cc">2 позиции</span>
   </div>
 </div>
 
-<!-- Filtered product list -->
-<div class="section-header">
-  <div class="section-title" id="section-title">Сладкие</div>
-  <div class="section-count" id="section-count"></div>
+<!-- Конструктор -->
+<div class="wide-card dark" onclick="openBuilder(null)" style="margin-bottom:24px">
+  <div class="wleft"><span class="wi">🛠</span><span class="wl">Собери свой трдельник</span></div>
+  <div class="wright"><span class="wb">от 250 ₽</span><span class="wa">›</span></div>
 </div>
+
+<div class="sec-hdr"><div class="sec-t" id="sec-title">Сладкие</div><div class="sec-c" id="sec-count"></div></div>
 <div class="products" id="product-list"></div>
 
-<!-- Cart bar -->
+<!-- Корзина -->
 <div class="cart-bar" id="cart-bar">
-  <button class="cart-btn" onclick="openModal()">
-    <div class="cart-btn-left">
-      <div class="cart-badge" id="cart-count">0</div>
-      <span class="cart-label">Мой заказ</span>
-    </div>
-    <span class="cart-total" id="cart-total-btn">0 ₽</span>
+  <button class="cbtn" onclick="openOrderModal()">
+    <div class="cbtnl"><div class="cbadge" id="cart-count">0</div><span class="clabel">Мой заказ</span></div>
+    <span class="ctotal" id="cart-total-btn">0 ₽</span>
   </button>
 </div>
 
-<!-- Product detail sheet -->
-<div class="detail-overlay" id="detail-overlay" onclick="closeDetail(event)">
-  <div class="detail-sheet" id="detail-sheet">
-    <div class="detail-hero" id="detail-hero">
-      <button class="detail-close" onclick="closeDetailBtn()">✕</button>
-      <span id="detail-emoji"></span>
-    </div>
-    <div class="detail-body">
-      <div class="detail-new" id="detail-new" style="display:none;">Новинка!</div>
-      <div class="detail-name" id="detail-name"></div>
-      <div class="detail-price" id="detail-price"></div>
-      <div class="detail-section-label">Состав</div>
-      <div class="ingredient-list" id="detail-ingredients"></div>
-      <div class="detail-add-row" id="detail-add-row"></div>
+<!-- Детальная карточка -->
+<div class="dov" id="dov" onclick="if(event.target===this)closeDetail()">
+  <div class="dsh">
+    <div class="dhero"><button class="dclose" onclick="closeDetail()">✕</button><span id="d-emoji"></span></div>
+    <div class="dbody">
+      <div class="dnew" id="d-new" style="display:none">Новинка!</div>
+      <div class="dname" id="d-name"></div>
+      <div class="dprice" id="d-price"></div>
+      <div class="dsec">Состав</div>
+      <div class="pills" id="d-ingredients"></div>
+      <div class="darow" id="d-btns"></div>
     </div>
   </div>
 </div>
 
-<!-- Order modal -->
-<div class="modal-overlay" id="modal" onclick="closeModal(event)">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-title">Мой заказ</div>
-    <div class="modal-subtitle">С собой</div>
-    <div id="modal-items"></div>
-    <div class="order-total-row">
-      <span class="order-total-label">Итого</span>
-      <span class="order-total-amount" id="modal-total">0 ₽</span>
+<!-- Обзор заказа -->
+<div class="overlay" id="order-ov" style="z-index:200" onclick="if(event.target===this)closeOrderModal()">
+  <div class="sheet">
+    <div class="hdl"></div>
+    <div class="stitle">Мой заказ</div>
+    <div class="ssub">С собой</div>
+    <div id="order-items"></div>
+    <div class="total-row"><span class="total-lbl">Итого</span><span class="total-amt" id="order-total">0 ₽</span></div>
+    <button class="ybtn" id="checkout-btn" onclick="openContactForm()">Оформить заказ →</button>
+  </div>
+</div>
+
+<!-- Форма контактов -->
+<div class="overlay" id="contact-ov" style="z-index:250" onclick="if(event.target===this)closeContactForm()">
+  <div class="sheet">
+    <div class="hdl"></div>
+    <div class="stitle">Ваши данные</div>
+    <div class="ssub">Нужны для связи по заказу</div>
+    <div class="fld">
+      <label class="flbl">Имя</label>
+      <input class="finput" id="inp-name" type="text" placeholder="Как вас зовут?" autocomplete="name">
+      <div class="ferr" id="err-name">Введите имя</div>
     </div>
-    <button class="order-btn" onclick="placeOrder()">Оформить заказ</button>
+    <div class="fld">
+      <label class="flbl">Телефон</label>
+      <input class="finput" id="inp-phone" type="tel" placeholder="+7 (900) 000-00-00" autocomplete="tel">
+      <div class="ferr" id="err-phone">Введите номер телефона</div>
+    </div>
+    <div style="height:12px"></div>
+    <button class="ybtn" onclick="confirmOrder()">Подтвердить заказ</button>
+  </div>
+</div>
+
+<!-- Конструктор -->
+<div class="bov" id="bov" onclick="if(event.target===this)closeBuilder()">
+  <div class="bsh">
+    <div class="hdl"></div>
+    <div class="stitle" id="b-title">Свой трдельник</div>
+    <div class="ssub">Выбери основу, добавь начинку и топинги</div>
+    <div class="bsec">
+      <div class="bshdr"><div><span class="bst">Основа</span><span class="bsreq">обязательно</span></div><span class="bsp">250 ₽</span></div>
+      <div class="ogrid" id="b-bases"></div>
+    </div>
+    <div class="bsec">
+      <div class="bshdr"><span class="bst">Начинка</span><span class="bsp">90 ₽ / шт</span></div>
+      <div class="bsnote">Необязательно · можно несколько</div>
+      <div class="ogrid" id="b-fillings"></div>
+    </div>
+    <div class="bsec">
+      <div class="bshdr"><span class="bst">Топинги</span><span class="bsp">85 ₽ / шт</span></div>
+      <div class="bsnote">Необязательно · можно несколько</div>
+      <div class="ogrid" id="b-toppings"></div>
+    </div>
+    <div class="bsum"><span class="bsuml">Итого</span><span class="bsump" id="b-price">250 ₽</span></div>
+    <button class="ybtn" id="b-btn" disabled onclick="addBuilderToCart()">Выбери основу</button>
   </div>
 </div>
 
 <script>
-const allItems = [
-  { id: 's1', name: 'Яблочный пай',       desc: 'Трдельник с корицей, крем-сыр, яблоки, яблочный джем, мороженое, карамель',
-    ingredients: ['Трдельник с корицей','Крем-сыр','Яблоки','Яблочный джем','Мороженое','Карамель'],
-    price: 400, emoji: '🍎', tags: ['sweet','icecream'] },
-  { id: 's2', name: 'Белогривая лошадка', desc: 'Трдельник с кокосом, нутелла, фрукты (киви, банан), взбитые сливки, зефирки, ягодный топпинг',
-    ingredients: ['Трдельник с кокосом','Нутелла','Киви','Банан','Взбитые сливки','Зефирки','Ягодный топпинг'],
-    price: 400, emoji: '🥝', tags: ['sweet'] },
-  { id: 's3', name: 'Сладкая мечта',      desc: 'Трдельник с корицей, нутелла, фрукты (киви, банан), орешки, мороженое, карамель',
-    ingredients: ['Трдельник с корицей','Нутелла','Киви','Банан','Орешки','Мороженое','Карамель'],
-    price: 400, emoji: '🍫', tags: ['sweet','icecream'] },
-  { id: 's4', name: 'Беби Бум',           desc: 'Трдельник с цветной посыпкой, нутелла, фрукты (киви, банан), мороженое, украшения',
-    ingredients: ['Трдельник с цветной посыпкой','Нутелла','Киви','Банан','Мороженое','Украшения'],
-    price: 400, emoji: '🌈', tags: ['sweet','icecream','new'], isNew: true },
-  { id: 'v1', name: 'Буффонище',          desc: 'Классический трдельник, адыгейский сыр, томаты Черри, прованские травы + лист салата',
-    ingredients: ['Классический трдельник','Адыгейский сыр','Томаты Черри','Прованские травы','Лист салата'],
-    price: 450, emoji: '🧀', tags: ['savory'] },
-  { id: 'v2', name: 'Мастер и маргарита', desc: 'Классический трдельник, салями, томатный соус, томаты Черри, салат Айсберг, маслины, корнишоны, жареный лук',
-    ingredients: ['Классический трдельник','Салями','Томатный соус','Томаты Черри','Салат Айсберг','Маслины','Корнишоны','Жареный лук'],
-    price: 450, emoji: '🍕', tags: ['savory'] },
-  { id: 'v3', name: 'Рыба моей мечты',    desc: 'Классический трдельник, слабосоленая рыба, свежий огурец и творожный сыр + лист салата',
-    ingredients: ['Классический трдельник','Слабосоленая рыба','Свежий огурец','Творожный сыр','Лист салата'],
-    price: 470, emoji: '🐟', tags: ['savory'] },
-  { id: 'v4', name: 'Война и мир',        desc: 'Классический трдельник, ветчина, сыр «Гауда», творожный сыр + лист салата',
-    ingredients: ['Классический трдельник','Ветчина','Сыр «Гауда»','Творожный сыр','Лист салата'],
-    price: 450, emoji: '🥗', tags: ['savory'] },
-  { id: 'v5', name: 'Баварский шпион',    desc: 'Классический трдельник, колбаски на гриле, салат Айсберг, соус «1000 островов», ломтик «Чеддера», корнишон',
-    ingredients: ['Классический трдельник','Колбаски на гриле','Салат Айсберг','Соус «1000 островов»','Ломтик «Чеддера»','Корнишон'],
-    price: 450, emoji: '🌭', tags: ['savory'] },
-  { id: 'v6', name: 'Цезарь',             desc: 'Копченая курица, томаты Черри, листовой салат, соус «Цезарь», тёртый пармезан',
-    ingredients: ['Классический трдельник','Копченая курица','Томаты Черри','Листовой салат','Соус «Цезарь»','Тёртый пармезан'],
-    price: 470, emoji: '🍗', tags: ['savory','new'], isNew: true },
+/* ══ ДАННЫЕ ══ */
+const allItems=[
+  {id:'s1',name:'Яблочный пай',desc:'Трдельник с корицей, крем-сыр, яблоки, яблочный джем, мороженое, карамель',
+   ingredients:['Трдельник с корицей','Крем-сыр','Яблоки','Яблочный джем','Мороженое','Карамель'],price:400,emoji:'🍎',tags:['all','sweet','icecream']},
+  {id:'s2',name:'Белогривая лошадка',desc:'Трдельник с кокосом, нутелла, фрукты (киви, банан), взбитые сливки, зефирки, ягодный топпинг',
+   ingredients:['Трдельник с кокосом','Нутелла','Киви','Банан','Взбитые сливки','Зефирки','Ягодный топпинг'],price:400,emoji:'🥝',tags:['all','sweet']},
+  {id:'s3',name:'Сладкая мечта',desc:'Трдельник с корицей, нутелла, фрукты (киви, банан), орешки, мороженое, карамель',
+   ingredients:['Трдельник с корицей','Нутелла','Киви','Банан','Орешки','Мороженое','Карамель'],price:400,emoji:'🍫',tags:['all','sweet','icecream']},
+  {id:'s4',name:'Беби Бум',desc:'Трдельник с цветной посыпкой, нутелла, фрукты (киви, банан), мороженое, украшения',
+   ingredients:['Трдельник с цветной посыпкой','Нутелла','Киви','Банан','Мороженое','Украшения'],price:400,emoji:'🌈',tags:['all','sweet','icecream','new'],isNew:true},
+  {id:'v1',name:'Буффонище',desc:'Классический трдельник, адыгейский сыр, томаты Черри, прованские травы + лист салата',
+   ingredients:['Классический трдельник','Адыгейский сыр','Томаты Черри','Прованские травы','Лист салата'],price:450,emoji:'🧀',tags:['all','savory']},
+  {id:'v2',name:'Мастер и маргарита',desc:'Классический трдельник, салями, томатный соус, томаты Черри, салат Айсберг, маслины, корнишоны, жареный лук',
+   ingredients:['Классический трдельник','Салями','Томатный соус','Томаты Черри','Салат Айсберг','Маслины','Корнишоны','Жареный лук'],price:450,emoji:'🍕',tags:['all','savory']},
+  {id:'v3',name:'Рыба моей мечты',desc:'Классический трдельник, слабосоленая рыба, свежий огурец и творожный сыр + лист салата',
+   ingredients:['Классический трдельник','Слабосоленая рыба','Свежий огурец','Творожный сыр','Лист салата'],price:470,emoji:'🐟',tags:['all','savory']},
+  {id:'v4',name:'Война и мир',desc:'Классический трдельник, ветчина, сыр «Гауда», творожный сыр + лист салата',
+   ingredients:['Классический трдельник','Ветчина','Сыр «Гауда»','Творожный сыр','Лист салата'],price:450,emoji:'🥗',tags:['all','savory']},
+  {id:'v5',name:'Баварский шпион',desc:'Классический трдельник, колбаски на гриле, салат Айсберг, соус «1000 островов», ломтик «Чеддера», корнишон',
+   ingredients:['Классический трдельник','Колбаски на гриле','Салат Айсберг','Соус «1000 островов»','Ломтик «Чеддера»','Корнишон'],price:450,emoji:'🌭',tags:['all','savory']},
+  {id:'v6',name:'Цезарь',desc:'Копченая курица, томаты Черри, листовой салат, соус «Цезарь», тёртый пармезан',
+   ingredients:['Классический трдельник','Копченая курица','Томаты Черри','Листовой салат','Соус «Цезарь»','Тёртый пармезан'],price:470,emoji:'🍗',tags:['all','savory','new'],isNew:true},
 ];
+const catMeta={all:{l:'Все трдельники'},sweet:{l:'Сладкие'},savory:{l:'Сытные'},icecream:{l:'С мороженым'},new:{l:'Новинки'}};
 
-const categoryMeta = {
-  sweet:   { label: 'Сладкие' },
-  savory:  { label: 'Сытные' },
-  icecream:{ label: 'С мороженым' },
-  new:     { label: 'Новинки' },
+/* ══ КОНСТРУКТОР ══ */
+const BD={
+  bases:[{id:'b1',n:'Сахарная'},{id:'b2',n:'Корица и сахар'},{id:'b3',n:'Ореховая'},{id:'b4',n:'Кокосовая'},{id:'b5',n:'Цветная посыпка'}],
+  fillings:[{id:'f1',n:'Соленая карамель'},{id:'f2',n:'Мороженое'},{id:'f3',n:'Фрукты'},{id:'f4',n:'Нутелла'},{id:'f5',n:'Взбитые сливки'},{id:'f6',n:'Крем-сыр'}],
+  toppings:[{id:'t1',n:'Орешки'},{id:'t2',n:'M&Ms'},{id:'t3',n:'Сезонные ягоды'},{id:'t4',n:'Oreo'},{id:'t5',n:'Зефирки'}],
 };
+let bState={base:null,fillings:[],toppings:[]};
+let bEditId=null;
 
-let activeCategory = 'sweet';
-const cart = {};
+function bTotal(){ return bState.base ? 250+bState.fillings.length*90+bState.toppings.length*85 : 0; }
 
-function selectCategory(cat) {
-  activeCategory = cat;
-
-  document.querySelectorAll('.cat-card').forEach(el => el.classList.remove('active'));
-  document.getElementById('cat-' + cat).classList.add('active');
-
-  const filtered = allItems.filter(i => i.tags.includes(cat));
-  document.getElementById('section-title').textContent = categoryMeta[cat].label;
-  document.getElementById('section-count').textContent = filtered.length + ' ' + plural(filtered.length);
-
-  renderProducts(filtered);
-
-  document.getElementById('product-list').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-function plural(n) {
-  if (n === 1) return 'позиция';
-  if (n >= 2 && n <= 4) return 'позиции';
-  return 'позиций';
-}
-
-function renderProducts(items) {
-  const container = document.getElementById('product-list');
-  container.innerHTML = items.map((item, idx) => `
-    <div class="product-card" style="animation-delay:${idx * 0.04}s; cursor:pointer;" onclick="openDetail('${item.id}')">
-      <div class="product-img">${item.emoji}</div>
-      <div class="product-info">
-        ${item.isNew ? '<div class="product-new">Новинка!</div>' : ''}
-        <div class="product-name">${item.name}</div>
-        <div class="product-desc">${item.desc}</div>
-        <div class="product-price">${item.price} ₽</div>
-      </div>
-      <button class="add-btn" id="add-${item.id}" onclick="event.stopPropagation(); setQty('${item.id}', 1)"
-        style="display:${getQty(item.id) === 0 ? 'flex' : 'none'}">+</button>
-      <div class="qty-control" id="ctrl-${item.id}"
-        style="display:${getQty(item.id) > 0 ? 'flex' : 'none'}" onclick="event.stopPropagation()">
-        <button class="qty-btn minus" onclick="setQty('${item.id}', -1)">−</button>
-        <span class="qty-num" id="qty-${item.id}">${getQty(item.id)}</span>
-        <button class="qty-btn plus" onclick="setQty('${item.id}', 1)">+</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-function openDetail(id) {
-  const item = getItemById(id);
-  if (!item) return;
-  document.getElementById('detail-emoji').textContent = item.emoji;
-  document.getElementById('detail-name').textContent  = item.name;
-  document.getElementById('detail-price').textContent = item.price + ' ₽';
-  const newEl = document.getElementById('detail-new');
-  newEl.style.display = item.isNew ? 'block' : 'none';
-  document.getElementById('detail-ingredients').innerHTML =
-    item.ingredients.map(i => `<span class="ingredient-pill">${i}</span>`).join('');
-  renderDetailBtn(id);
-  document.getElementById('detail-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-  document.getElementById('detail-overlay')._currentId = id;
-}
-
-function renderDetailBtn(id) {
-  const qty = getQty(id);
-  const row = document.getElementById('detail-add-row');
-  if (qty === 0) {
-    row.innerHTML = `<button class="detail-add-btn" onclick="detailSetQty('${id}', 1)">
-      <span style="font-size:18px;">+</span> Добавить в заказ
-    </button>`;
+function renderBuilder(){
+  const hasBase=!!bState.base;
+  document.getElementById('b-bases').innerHTML=BD.bases.map(b=>
+    `<div class="chip${bState.base===b.id?' sel':''}" onclick="selBase('${b.id}')">${b.n}</div>`).join('');
+  document.getElementById('b-fillings').innerHTML=BD.fillings.map(f=>
+    `<div class="chip${bState.fillings.includes(f.id)?' sel':''}${!hasBase?' disabled':''}" onclick="togFilling('${f.id}')">${f.n}</div>`).join('');
+  document.getElementById('b-toppings').innerHTML=BD.toppings.map(t=>
+    `<div class="chip${bState.toppings.includes(t.id)?' sel':''}${!hasBase?' disabled':''}" onclick="togTopping('${t.id}')">${t.n}</div>`).join('');
+  const total=bTotal();
+  document.getElementById('b-price').textContent=(total||250)+' ₽';
+  const btn=document.getElementById('b-btn');
+  if(hasBase){
+    btn.disabled=false;
+    btn.textContent=(bEditId?'Сохранить — ':'Добавить в заказ — ')+total+' ₽';
   } else {
-    row.innerHTML = `<div class="detail-qty-control">
-      <button class="detail-qty-btn" onclick="detailSetQty('${id}', -1)">−</button>
-      <span class="detail-qty-num" id="dqty-${id}">${qty}</span>
-      <button class="detail-qty-btn dplus" onclick="detailSetQty('${id}', 1)">+</button>
-    </div>`;
+    btn.disabled=true;
+    btn.textContent='Выбери основу';
   }
 }
 
-function detailSetQty(id, delta) {
-  setQty(id, delta);
-  renderDetailBtn(id);
-  const listQtyEl = document.getElementById('qty-' + id);
-  if (listQtyEl) listQtyEl.textContent = getQty(id);
+function selBase(id){ bState.base=bState.base===id?null:id; if(!bState.base){bState.fillings=[];bState.toppings=[];} renderBuilder(); }
+function togFilling(id){ if(!bState.base)return; bState.fillings=bState.fillings.includes(id)?bState.fillings.filter(x=>x!==id):[...bState.fillings,id]; renderBuilder(); }
+function togTopping(id){ if(!bState.base)return; bState.toppings=bState.toppings.includes(id)?bState.toppings.filter(x=>x!==id):[...bState.toppings,id]; renderBuilder(); }
+
+function openBuilder(editId){
+  if(editId){
+    const item=customItems[editId];
+    const base=BD.bases.find(b=>b.n===item.base);
+    bState={
+      base:base?base.id:null,
+      fillings:BD.fillings.filter(f=>item.fillings.includes(f.n)).map(f=>f.id),
+      toppings:BD.toppings.filter(t=>item.toppings.includes(t.n)).map(t=>t.id),
+    };
+    bEditId=editId;
+    document.getElementById('b-title').textContent='Изменить трдельник';
+  } else {
+    bState={base:null,fillings:[],toppings:[]};
+    bEditId=null;
+    document.getElementById('b-title').textContent='Свой трдельник';
+  }
+  renderBuilder();
+  document.getElementById('bov').classList.add('open');
+  document.body.style.overflow='hidden';
 }
 
-function closeDetail(e) {
-  if (e.target === document.getElementById('detail-overlay')) closeDetailBtn();
-}
+function closeBuilder(){ document.getElementById('bov').classList.remove('open'); document.body.style.overflow=''; }
 
-function closeDetailBtn() {
-  document.getElementById('detail-overlay').classList.remove('open');
-  document.body.style.overflow = '';
-}
+const customItems={};
+let customCnt=0;
 
-function getQty(id) { return cart[id] || 0; }
+function addBuilderToCart(){
+  if(!bState.base)return;
+  const base=BD.bases.find(b=>b.id===bState.base);
+  const fillings=bState.fillings.map(id=>BD.fillings.find(f=>f.id===id).n);
+  const toppings=bState.toppings.map(id=>BD.toppings.find(t=>t.id===id).n);
+  const price=bTotal();
+  const parts=[base.n,...fillings,...toppings];
 
-function setQty(id, delta) {
-  const next = Math.max(0, getQty(id) + delta);
-  if (next === 0) delete cart[id]; else cart[id] = next;
-  const addEl  = document.getElementById('add-' + id);
-  const ctrlEl = document.getElementById('ctrl-' + id);
-  const qtyEl  = document.getElementById('qty-' + id);
-  if (!addEl) return;
-  qtyEl.textContent = next;
-  addEl.style.display  = next === 0 ? 'flex' : 'none';
-  ctrlEl.style.display = next > 0  ? 'flex' : 'none';
+  if(bEditId){
+    // обновляем существующий
+    customItems[bEditId]={id:bEditId,name:'Свой трдельник',emoji:'🛠',price,base:base.n,fillings,toppings,desc:parts.join(', ')};
+    cart[bEditId]=cart[bEditId]||1;
+  } else {
+    const cid='custom_'+(++customCnt);
+    customItems[cid]={id:cid,name:'Свой трдельник',emoji:'🛠',price,base:base.n,fillings,toppings,desc:parts.join(', ')};
+    cart[cid]=1;
+  }
+  bEditId=null;
   updateCart();
+  closeBuilder();
 }
 
-function updateCart() {
-  const ids   = Object.keys(cart);
-  const total = ids.reduce((s, id) => s + cart[id] * getPriceById(id), 0);
-  const count = ids.reduce((s, id) => s + cart[id], 0);
-  document.getElementById('cart-count').textContent    = count;
-  document.getElementById('cart-total-btn').textContent = total.toLocaleString('ru') + ' ₽';
-  document.getElementById('cart-bar').className = count > 0 ? 'cart-bar visible' : 'cart-bar';
-  if (window.Telegram && window.Telegram.WebApp) {
-    if (count > 0) {
-      Telegram.WebApp.MainButton.setText('Заказать — ' + total.toLocaleString('ru') + ' ₽');
-      Telegram.WebApp.MainButton.show();
-    } else { Telegram.WebApp.MainButton.hide(); }
+/* ══ КАТЕГОРИИ ══ */
+function selectCat(cat){
+  document.querySelectorAll('.cat-card,.wide-card').forEach(el=>el.classList.remove('active'));
+  const el=document.getElementById('cat-'+cat); if(el) el.classList.add('active');
+  const filtered=allItems.filter(i=>i.tags.includes(cat));
+  document.getElementById('sec-title').textContent=catMeta[cat].l;
+  document.getElementById('sec-count').textContent=filtered.length+' '+pl(filtered.length);
+  renderProducts(filtered);
+  document.getElementById('product-list').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function pl(n){return n===1?'позиция':n<=4?'позиции':'позиций';}
+
+/* ══ РЕНДЕР ТОВАРОВ ══ */
+function renderProducts(items){
+  document.getElementById('product-list').innerHTML=items.map((item,idx)=>`
+    <div class="pcard" style="animation-delay:${idx*.04}s" onclick="openDetail('${item.id}')">
+      <div class="pimg">${item.emoji}</div>
+      <div class="pinfo">
+        ${item.isNew?'<div class="pnew">Новинка!</div>':''}
+        <div class="pname">${item.name}</div>
+        <div class="pdesc">${item.desc}</div>
+        <div class="pprice">${item.price} ₽</div>
+      </div>
+      <button class="addbtn" id="add-${item.id}"
+        onclick="event.stopPropagation();setQty('${item.id}',1)"
+        style="display:${getQty(item.id)===0?'flex':'none'}">+</button>
+      <div class="qty-ctrl" id="ctrl-${item.id}" onclick="event.stopPropagation()"
+        style="display:${getQty(item.id)>0?'flex':'none'}">
+        <button class="qbtn" onclick="setQty('${item.id}',-1)">−</button>
+        <span class="qnum" id="qty-${item.id}">${getQty(item.id)}</span>
+        <button class="qbtn plus" onclick="setQty('${item.id}',1)">+</button>
+      </div>
+    </div>`).join('');
+}
+
+/* ══ КОРЗИНА ══ */
+const cart={};
+function getQty(id){return cart[id]||0;}
+
+function setQty(id,delta){
+  const next=Math.max(0,getQty(id)+delta);
+  if(next===0) delete cart[id]; else cart[id]=next;
+  updateCart(); // всегда обновляем
+  const a=document.getElementById('add-'+id);
+  const c=document.getElementById('ctrl-'+id);
+  const q=document.getElementById('qty-'+id);
+  if(a){q.textContent=next;a.style.display=next===0?'flex':'none';c.style.display=next>0?'flex':'none';}
+}
+
+function removeFromCart(id){
+  delete cart[id];
+  if(id.startsWith('custom_')) delete customItems[id];
+  updateCart();
+  // обновляем модалку или закрываем если пусто
+  if(Object.keys(cart).length===0) closeOrderModal();
+  else refreshOrderModal();
+}
+
+function updateCart(){
+  const ids=Object.keys(cart);
+  const count=ids.reduce((s,id)=>s+cart[id],0);
+  const total=ids.reduce((s,id)=>s+cart[id]*getPriceById(id),0);
+  document.getElementById('cart-count').textContent=count;
+  document.getElementById('cart-total-btn').textContent=total.toLocaleString('ru')+' ₽';
+  document.getElementById('cart-bar').className=count>0?'cart-bar visible':'cart-bar';
+  if(window.Telegram&&window.Telegram.WebApp){
+    if(count>0){Telegram.WebApp.MainButton.setText('Заказать — '+total.toLocaleString('ru')+' ₽');Telegram.WebApp.MainButton.show();}
+    else Telegram.WebApp.MainButton.hide();
   }
 }
 
-function getPriceById(id) { return (allItems.find(i => i.id === id) || {}).price || 0; }
-function getItemById(id)  { return allItems.find(i => i.id === id); }
+function getPriceById(id){return (getItemById(id)||{}).price||0;}
+function getItemById(id){return allItems.find(i=>i.id===id)||customItems[id]||null;}
 
-function openModal() {
-  const ids = Object.keys(cart);
-  if (!ids.length) return;
-  const total = ids.reduce((s, id) => s + cart[id] * getPriceById(id), 0);
-  document.getElementById('modal-items').innerHTML = ids.map(id => {
-    const item = getItemById(id);
-    return `<div class="order-item">
-      <div class="order-item-icon">${item.emoji}</div>
-      <div class="order-item-name">${item.name} × ${cart[id]}</div>
-      <div class="order-item-price">${(item.price * cart[id]).toLocaleString('ru')} ₽</div>
+/* ══ ДЕТАЛЬНАЯ КАРТОЧКА ══ */
+function openDetail(id){
+  const item=getItemById(id); if(!item)return;
+  document.getElementById('d-emoji').textContent=item.emoji;
+  document.getElementById('d-name').textContent=item.name;
+  document.getElementById('d-price').textContent=item.price+' ₽';
+  document.getElementById('d-new').style.display=item.isNew?'block':'none';
+  document.getElementById('d-ingredients').innerHTML=item.ingredients.map(i=>`<span class="pill">${i}</span>`).join('');
+  renderDetailBtn(id);
+  document.getElementById('dov').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+function renderDetailBtn(id){
+  const qty=getQty(id);
+  document.getElementById('d-btns').innerHTML=qty===0
+    ?`<button class="dabtn" onclick="detailSetQty('${id}',1)"><span style="font-size:18px">+</span> Добавить в заказ</button>`
+    :`<div class="dqctrl">
+        <button class="dqbtn" onclick="detailSetQty('${id}',-1)">−</button>
+        <span class="dqnum">${qty}</span>
+        <button class="dqbtn plus" onclick="detailSetQty('${id}',1)">+</button>
+      </div>`;
+}
+
+function detailSetQty(id,delta){setQty(id,delta);renderDetailBtn(id);}
+function closeDetail(){document.getElementById('dov').classList.remove('open');document.body.style.overflow='';}
+
+/* ══ ШТОРКА ЗАКАЗА ══ */
+function buildOrderHTML(){
+  const ids=Object.keys(cart);
+  const total=ids.reduce((s,id)=>s+cart[id]*getPriceById(id),0);
+  const html=ids.map(id=>{
+    const item=getItemById(id);
+    const isC=id.startsWith('custom_');
+    return `<div class="oitem${isC?' editable':''}"${isC?` onclick="editCustomFromCart('${id}')"`:''}>
+      <div class="oicon">${item.emoji}</div>
+      <div class="oinfo">
+        <div class="oname">${item.name} × ${cart[id]}</div>
+        ${isC?`<div class="odesc">${item.desc}</div><div class="odesc" style="color:var(--yd);font-weight:600;margin-top:2px">Нажми чтобы изменить ›</div>`:''}
+      </div>
+      <div class="oprice">${(item.price*cart[id]).toLocaleString('ru')} ₽</div>
+      <button class="odel" onclick="event.stopPropagation();removeFromCart('${id}')">×</button>
     </div>`;
   }).join('');
-  document.getElementById('modal-total').textContent = total.toLocaleString('ru') + ' ₽';
-  document.getElementById('modal').classList.add('open');
+  return {html,total};
 }
 
-function closeModal(e) {
-  if (e.target === document.getElementById('modal'))
-    document.getElementById('modal').classList.remove('open');
+function openOrderModal(){
+  const ids=Object.keys(cart);
+  if(!ids.length)return;
+  refreshOrderModal();
+  document.getElementById('order-ov').classList.add('open');
 }
 
-function placeOrder() {
-  const ids = Object.keys(cart);
-  const total = ids.reduce((s, id) => s + cart[id] * getPriceById(id), 0);
-  const data = { items: ids.map(id => ({ id, qty: cart[id], price: getPriceById(id) })), total };
-  if (window.Telegram && window.Telegram.WebApp) {
-    Telegram.WebApp.sendData(JSON.stringify(data));
-  } else {
-    alert('Заказ оформлен!\nИтого: ' + total.toLocaleString('ru') + ' ₽');
-  }
+function refreshOrderModal(){
+  const {html,total}=buildOrderHTML();
+  document.getElementById('order-items').innerHTML=html;
+  document.getElementById('order-total').textContent=total.toLocaleString('ru')+' ₽';
 }
 
-selectCategory('sweet');
+function closeOrderModal(){document.getElementById('order-ov').classList.remove('open');}
 
-if (window.Telegram && window.Telegram.WebApp) {
+function editCustomFromCart(id){
+  closeOrderModal();
+  openBuilder(id);
+}
+
+/* ══ ФОРМА КОНТАКТОВ ══ */
+function openContactForm(){
+  const ids=Object.keys(cart);
+  if(!ids.length)return; // защита от пустого заказа
+  closeOrderModal();
+  document.getElementById('contact-ov').classList.add('open');
+  setTimeout(()=>document.getElementById('inp-name').focus(),300);
+}
+function closeContactForm(){document.getElementById('contact-ov').classList.remove('open');}
+
+function confirmOrder(){
+  const ids=Object.keys(cart);
+  if(!ids.length){closeContactForm();return;}
+  const name=document.getElementById('inp-name').value.trim();
+  const phone=document.getElementById('inp-phone').value.trim();
+  let ok=true;
+  if(!name){document.getElementById('err-name').classList.add('show');ok=false;}else document.getElementById('err-name').classList.remove('show');
+  if(!phone||phone.replace(/\D/g,'').length<7){document.getElementById('err-phone').classList.add('show');ok=false;}else document.getElementById('err-phone').classList.remove('show');
+  if(!ok)return;
+  const total=ids.reduce((s,id)=>s+cart[id]*getPriceById(id),0);
+  const items=ids.map(id=>{
+    const item=getItemById(id);
+    const obj={id,qty:cart[id],price:getPriceById(id),name:item.name};
+    if(id.startsWith('custom_'))Object.assign(obj,{base:item.base,fillings:item.fillings,toppings:item.toppings});
+    return obj;
+  });
+  const data={name,phone,items,total};
+  if(window.Telegram&&window.Telegram.WebApp)Telegram.WebApp.sendData(JSON.stringify(data));
+  else{alert(`Заказ оформлен!\n${name} · ${phone}\nИтого: ${total.toLocaleString('ru')} ₽`);closeContactForm();}
+}
+
+/* ══ INIT ══ */
+selectCat('sweet');
+if(window.Telegram&&window.Telegram.WebApp){
   Telegram.WebApp.ready();
   Telegram.WebApp.expand();
-  Telegram.WebApp.MainButton.setParams({ color: '#FFE300', text_color: '#1a1a1a' });
-  Telegram.WebApp.MainButton.onClick(openModal);
+  Telegram.WebApp.MainButton.setParams({color:'#FFE300',text_color:'#1a1a1a'});
+  Telegram.WebApp.MainButton.onClick(openOrderModal);
 }
 </script>
 </body>
