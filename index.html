@@ -333,9 +333,10 @@ function renderBuilder(){
     const dis=!hasBase||(!bState.fillings.includes(f.id)&&getFillingHint(f.id));
     return `<div class="chip${bState.fillings.includes(f.id)?' sel':''}${dis?' disabled':''}" onclick="togFilling('${f.id}')">${f.n}</div>`;
   }).join('');
-  // Топинги требуют только основу — начинка не нужна
+  // Топинги требуют хотя бы одну начинку
+  const hasFilling=bState.fillings.length>0;
   document.getElementById('b-toppings').innerHTML=BD.toppings.map(t=>
-    `<div class="chip${bState.toppings.includes(t.id)?' sel':''}${!hasBase?' disabled':''}" onclick="togTopping('${t.id}')">${t.n}</div>`).join('');
+    `<div class="chip${bState.toppings.includes(t.id)?' sel':''}${!hasFilling?' disabled':''}" onclick="togTopping('${t.id}')">${t.n}</div>`).join('');
   const total=bTotal();
   document.getElementById('b-price').textContent=(total||250)+' ₽';
   const btn=document.getElementById('b-btn');
@@ -353,6 +354,8 @@ function togFilling(id){
   if(!bState.base)return;
   if(bState.fillings.includes(id)){
     bState.fillings=bState.fillings.filter(x=>x!==id);
+    // Если начинок больше нет — сбрасываем топинги
+    if(bState.fillings.length===0) bState.toppings=[];
   } else {
     // Убираем конкурирующие начинки из той же группы
     const grp=FILLING_GROUPS.find(g=>g.includes(id));
@@ -361,7 +364,11 @@ function togFilling(id){
   }
   renderBuilder();
 }
-function togTopping(id){ if(!bState.base)return; bState.toppings=bState.toppings.includes(id)?bState.toppings.filter(x=>x!==id):[...bState.toppings,id]; renderBuilder(); }
+function togTopping(id){
+  if(bState.fillings.length===0)return; // нужна хотя бы одна начинка
+  bState.toppings=bState.toppings.includes(id)?bState.toppings.filter(x=>x!==id):[...bState.toppings,id];
+  renderBuilder();
+}
 
 function openBuilder(editId){
   if(editId){
