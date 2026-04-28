@@ -55,7 +55,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* products */
 .products{display:flex;flex-direction:column;gap:10px;padding:0 20px}
 .pcard{background:var(--bg);border-radius:var(--r);border:1.5px solid #e8e8e8;display:flex;align-items:center;gap:12px;padding:12px;cursor:pointer}
-.pimg{width:70px;height:70px;border-radius:12px;flex-shrink:0;background:var(--sf);display:flex;align-items:center;justify-content:center;font-size:34px}
+.pimg{width:70px;height:70px;border-radius:12px;flex-shrink:0;background:var(--sf);display:flex;align-items:center;justify-content:center;font-size:34px;overflow:hidden}
+.pimg img{width:100%;height:100%;object-fit:cover;border-radius:12px}
 .pinfo{flex:1;min-width:0}
 .pnew{font-size:10px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px}
 .pname{font-size:14px;font-weight:800;margin-bottom:3px;line-height:1.2}
@@ -91,7 +92,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 /* order items */
 .oitem{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0}
-.oicon{font-size:24px;width:40px;height:40px;background:var(--sf);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.oicon{font-size:24px;width:44px;height:44px;background:var(--sf);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.oicon img{width:100%;height:100%;object-fit:cover;border-radius:10px}
 .oinfo{flex:1;min-width:0}
 .oname{font-size:13px;font-weight:600}
 .odesc{font-size:11px;color:var(--mu);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -120,7 +122,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-end}
 .dov.open{display:flex}
 .dsh{background:var(--bg);border-radius:24px 24px 0 0;width:100%;max-height:85vh;overflow-y:auto;animation:su .28s cubic-bezier(.32,.72,0,1) both}
-.dhero{background:var(--sf);border-radius:24px 24px 0 0;display:flex;align-items:center;justify-content:center;height:190px;font-size:90px;position:relative}
+.dhero{background:var(--sf);border-radius:24px 24px 0 0;display:flex;align-items:center;justify-content:center;height:220px;font-size:90px;position:relative;overflow:hidden}
+.dhero img{width:100%;height:100%;object-fit:cover}
 .dclose{position:absolute;top:14px;right:14px;width:32px;height:32px;background:rgba(0,0,0,.12);border:none;border-radius:50%;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .dbody{padding:20px 20px 36px}
 .dnew{font-size:11px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
@@ -280,25 +283,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* ══ ДАННЫЕ ══ */
 const allItems=[
   {id:'s1',name:'Яблочный пай',desc:'Трдельник с корицей, крем-сыр, яблоки, яблочный джем, мороженое, карамель',
-   ingredients:['Трдельник с корицей','Крем-сыр','Яблоки','Яблочный джем','Мороженое','Карамель'],price:400,emoji:'🍎',tags:['all','sweet','icecream']},
+   ingredients:['Трдельник с корицей','Крем-сыр','Яблоки','Яблочный джем','Мороженое','Карамель'],price:400,emoji:'🍎',img:'img/s1.jpg',tags:['all','sweet','icecream']},
   {id:'s2',name:'Белогривая лошадка',desc:'Трдельник с кокосом, нутелла, фрукты (киви, банан), взбитые сливки, зефирки, ягодный топпинг',
-   ingredients:['Трдельник с кокосом','Нутелла','Киви','Банан','Взбитые сливки','Зефирки','Ягодный топпинг'],price:400,emoji:'🥝',tags:['all','sweet']},
+   ingredients:['Трдельник с кокосом','Нутелла','Киви','Банан','Взбитые сливки','Зефирки','Ягодный топпинг'],price:400,emoji:'🥝',img:'img/s2.jpg',tags:['all','sweet']},
   {id:'s3',name:'Сладкая мечта',desc:'Трдельник с корицей, нутелла, фрукты (киви, банан), орешки, мороженое, карамель',
-   ingredients:['Трдельник с корицей','Нутелла','Киви','Банан','Орешки','Мороженое','Карамель'],price:400,emoji:'🍫',tags:['all','sweet','icecream']},
+   ingredients:['Трдельник с корицей','Нутелла','Киви','Банан','Орешки','Мороженое','Карамель'],price:400,emoji:'🍫',img:'img/s3.jpg',tags:['all','sweet','icecream']},
   {id:'s4',name:'Беби Бум',desc:'Трдельник с цветной посыпкой, нутелла, фрукты (киви, банан), мороженое, украшения',
-   ingredients:['Трдельник с цветной посыпкой','Нутелла','Киви','Банан','Мороженое','Украшения'],price:400,emoji:'🌈',tags:['all','sweet','icecream','new'],isNew:true},
+   ingredients:['Трдельник с цветной посыпкой','Нутелла','Киви','Банан','Мороженое','Украшения'],price:400,emoji:'🌈',img:'img/s4.jpg',tags:['all','sweet','icecream','new'],isNew:true},
   {id:'v1',name:'Буффонище',desc:'Классический трдельник, адыгейский сыр, томаты Черри, прованские травы + лист салата',
-   ingredients:['Классический трдельник','Адыгейский сыр','Томаты Черри','Прованские травы','Лист салата'],price:450,emoji:'🧀',tags:['all','savory']},
+   ingredients:['Классический трдельник','Адыгейский сыр','Томаты Черри','Прованские травы','Лист салата'],price:450,emoji:'🧀',img:'img/v1.jpg',tags:['all','savory']},
   {id:'v2',name:'Мастер и маргарита',desc:'Классический трдельник, салями, томатный соус, томаты Черри, салат Айсберг, маслины, корнишоны, жареный лук',
-   ingredients:['Классический трдельник','Салями','Томатный соус','Томаты Черри','Салат Айсберг','Маслины','Корнишоны','Жареный лук'],price:450,emoji:'🍕',tags:['all','savory']},
+   ingredients:['Классический трдельник','Салями','Томатный соус','Томаты Черри','Салат Айсберг','Маслины','Корнишоны','Жареный лук'],price:450,emoji:'🍕',img:'img/v2.jpg',tags:['all','savory']},
   {id:'v3',name:'Рыба моей мечты',desc:'Классический трдельник, слабосоленая рыба, свежий огурец и творожный сыр + лист салата',
-   ingredients:['Классический трдельник','Слабосоленая рыба','Свежий огурец','Творожный сыр','Лист салата'],price:470,emoji:'🐟',tags:['all','savory']},
+   ingredients:['Классический трдельник','Слабосоленая рыба','Свежий огурец','Творожный сыр','Лист салата'],price:470,emoji:'🐟',img:'img/v3.jpg',tags:['all','savory']},
   {id:'v4',name:'Война и мир',desc:'Классический трдельник, ветчина, сыр «Гауда», творожный сыр + лист салата',
-   ingredients:['Классический трдельник','Ветчина','Сыр «Гауда»','Творожный сыр','Лист салата'],price:450,emoji:'🥗',tags:['all','savory']},
+   ingredients:['Классический трдельник','Ветчина','Сыр «Гауда»','Творожный сыр','Лист салата'],price:450,emoji:'🥗',img:'img/v4.jpg',tags:['all','savory']},
   {id:'v5',name:'Баварский шпион',desc:'Классический трдельник, колбаски на гриле, салат Айсберг, соус «1000 островов», ломтик «Чеддера», корнишон',
-   ingredients:['Классический трдельник','Колбаски на гриле','Салат Айсберг','Соус «1000 островов»','Ломтик «Чеддера»','Корнишон'],price:450,emoji:'🌭',tags:['all','savory']},
+   ingredients:['Классический трдельник','Колбаски на гриле','Салат Айсберг','Соус «1000 островов»','Ломтик «Чеддера»','Корнишон'],price:450,emoji:'🌭',img:'img/v5.jpg',tags:['all','savory']},
   {id:'v6',name:'Цезарь',desc:'Копченая курица, томаты Черри, листовой салат, соус «Цезарь», тёртый пармезан',
-   ingredients:['Классический трдельник','Копченая курица','Томаты Черри','Листовой салат','Соус «Цезарь»','Тёртый пармезан'],price:470,emoji:'🍗',tags:['all','savory','new'],isNew:true},
+   ingredients:['Классический трдельник','Копченая курица','Томаты Черри','Листовой салат','Соус «Цезарь»','Тёртый пармезан'],price:470,emoji:'🍗',img:'img/v6.jpg',tags:['all','savory','new'],isNew:true},
 ];
 const catMeta={all:{l:'Все трдельники'},sweet:{l:'Сладкие'},savory:{l:'Сытные'},icecream:{l:'С мороженым'},new:{l:'Новинки'}};
 
@@ -431,10 +434,15 @@ function selectCat(cat){
 function pl(n){return n===1?'позиция':n<=4?'позиции':'позиций';}
 
 /* ══ РЕНДЕР ТОВАРОВ ══ */
+function imgOrEmoji(item,fallbackClass=''){
+  if(item.img) return `<img src="${item.img}" alt="${item.name}" onerror="this.style.display='none';this.nextSibling.style.display='flex'"><span style="display:none;font-size:34px;width:100%;height:100%;align-items:center;justify-content:center">${item.emoji}</span>`;
+  return item.emoji;
+}
+
 function renderProducts(items){
   document.getElementById('product-list').innerHTML=items.map((item,idx)=>`
     <div class="pcard" style="animation-delay:${idx*.04}s" onclick="openDetail('${item.id}')">
-      <div class="pimg">${item.emoji}</div>
+      <div class="pimg">${imgOrEmoji(item)}</div>
       <div class="pinfo">
         ${item.isNew?'<div class="pnew">Новинка!</div>':''}
         <div class="pname">${item.name}</div>
@@ -495,7 +503,13 @@ function getItemById(id){return allItems.find(i=>i.id===id)||customItems[id]||nu
 /* ══ ДЕТАЛЬНАЯ КАРТОЧКА ══ */
 function openDetail(id){
   const item=getItemById(id); if(!item)return;
-  document.getElementById('d-emoji').textContent=item.emoji;
+  // Hero: фото или эмодзи
+  const heroEl=document.getElementById('d-emoji');
+  if(item.img){
+    heroEl.innerHTML=`<img src="${item.img}" alt="${item.name}" style="width:100%;height:100%;object-fit:cover;border-radius:24px 24px 0 0" onerror="this.outerHTML='<span style=\\'font-size:90px\\'>${item.emoji}</span>'">`;
+  } else {
+    heroEl.textContent=item.emoji;
+  }
   document.getElementById('d-name').textContent=item.name;
   document.getElementById('d-price').textContent=item.price+' ₽';
   document.getElementById('d-new').style.display=item.isNew?'block':'none';
@@ -526,8 +540,9 @@ function buildOrderHTML(){
   const html=ids.map(id=>{
     const item=getItemById(id);
     const isC=id.startsWith('custom_');
+    const oThumb=item.img?`<img src="${item.img}" alt="${item.name}" onerror="this.outerHTML='${item.emoji}'">`:(item.emoji||'🛠');
     return `<div class="oitem${isC?' editable':''}"${isC?` onclick="editCustomFromCart('${id}')"`:''}>
-      <div class="oicon">${item.emoji}</div>
+      <div class="oicon">${oThumb}</div>
       <div class="oinfo">
         <div class="oname">${item.name} × ${cart[id]}</div>
         ${isC?`<div class="odesc">${item.desc}</div><div class="odesc" style="color:var(--yd);font-weight:600;margin-top:2px">Нажми чтобы изменить ›</div>`:''}
