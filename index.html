@@ -7,6 +7,7 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+button{color:var(--tx);-webkit-appearance:none;}
 :root{--y:#FFE300;--yd:#C8B400;--bg:#fff;--sf:#f2f2f2;--tx:#1a1a1a;--mu:#999;--red:#DA291C;--r:16px}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;padding-bottom:130px;overflow-x:hidden}
 
@@ -65,7 +66,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .qbtn.plus{background:var(--y);border-radius:50%}
 .qbtn:active{opacity:.6}
 .qnum{font-size:13px;font-weight:800;min-width:18px;text-align:center}
-.addbtn{width:30px;height:30px;background:var(--y);border:none;border-radius:50%;font-size:19px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.addbtn{width:30px;height:30px;background:var(--y);border:none;border-radius:50%;font-size:19px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--tx)}
 .addbtn:active{transform:scale(.88)}
 @keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .products .pcard{animation:fi .18s ease both}
@@ -77,7 +78,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .cbtn:active{opacity:.85}
 .cbtnl{display:flex;align-items:center;gap:10px}
 .cbadge{background:var(--tx);color:var(--y);width:24px;height:24px;border-radius:50%;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
-.clabel,.ctotal{font-size:15px;font-weight:700}
+.clabel,.ctotal{font-size:15px;font-weight:700;color:var(--tx)}
 
 /* overlays */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);align-items:flex-end}
@@ -159,6 +160,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </head>
 <body>
 
+<div id="closed-banner" style="display:none;background:#DA291C;color:#fff;text-align:center;padding:10px 20px;font-size:14px;font-weight:700">🔴 Приём заказов приостановлен. Скоро вернёмся!</div>
 <div class="header"><div class="logo">Трдельник</div><div style="font-size:22px">🇷🇺</div></div>
 <div class="greeting"><h1>Привет,<br><span>что закажем?</span></h1></div>
 
@@ -309,14 +311,29 @@ const BD={
 let bState={base:null,fillings:[],toppings:[]};
 let bEditId=null;
 
+// Несовместимые начинки — из каждой группы можно выбрать только одну
+const FILLING_GROUPS=[
+  ['f2','f5','f4'], // Мороженое, Взбитые сливки, Нутелла
+  ['f1','f6'],      // Соленая карамель, Крем-сыр
+];
+
 function bTotal(){ return bState.base ? 250+bState.fillings.length*90+bState.toppings.length*85 : 0; }
+
+function getFillingHint(id){
+  const g=FILLING_GROUPS.find(g=>g.includes(id));
+  if(!g||!bState.fillings.some(x=>x!==id&&g.includes(x)))return '';
+  return ' disabled';
+}
 
 function renderBuilder(){
   const hasBase=!!bState.base;
   document.getElementById('b-bases').innerHTML=BD.bases.map(b=>
     `<div class="chip${bState.base===b.id?' sel':''}" onclick="selBase('${b.id}')">${b.n}</div>`).join('');
-  document.getElementById('b-fillings').innerHTML=BD.fillings.map(f=>
-    `<div class="chip${bState.fillings.includes(f.id)?' sel':''}${!hasBase?' disabled':''}" onclick="togFilling('${f.id}')">${f.n}</div>`).join('');
+  document.getElementById('b-fillings').innerHTML=BD.fillings.map(f=>{
+    const dis=!hasBase||(!bState.fillings.includes(f.id)&&getFillingHint(f.id));
+    return `<div class="chip${bState.fillings.includes(f.id)?' sel':''}${dis?' disabled':''}" onclick="togFilling('${f.id}')">${f.n}</div>`;
+  }).join('');
+  // Топинги требуют только основу — начинка не нужна
   document.getElementById('b-toppings').innerHTML=BD.toppings.map(t=>
     `<div class="chip${bState.toppings.includes(t.id)?' sel':''}${!hasBase?' disabled':''}" onclick="togTopping('${t.id}')">${t.n}</div>`).join('');
   const total=bTotal();
@@ -332,7 +349,18 @@ function renderBuilder(){
 }
 
 function selBase(id){ bState.base=bState.base===id?null:id; if(!bState.base){bState.fillings=[];bState.toppings=[];} renderBuilder(); }
-function togFilling(id){ if(!bState.base)return; bState.fillings=bState.fillings.includes(id)?bState.fillings.filter(x=>x!==id):[...bState.fillings,id]; renderBuilder(); }
+function togFilling(id){
+  if(!bState.base)return;
+  if(bState.fillings.includes(id)){
+    bState.fillings=bState.fillings.filter(x=>x!==id);
+  } else {
+    // Убираем конкурирующие начинки из той же группы
+    const grp=FILLING_GROUPS.find(g=>g.includes(id));
+    if(grp) bState.fillings=bState.fillings.filter(x=>!grp.includes(x));
+    bState.fillings=[...bState.fillings,id];
+  }
+  renderBuilder();
+}
 function togTopping(id){ if(!bState.base)return; bState.toppings=bState.toppings.includes(id)?bState.toppings.filter(x=>x!==id):[...bState.toppings,id]; renderBuilder(); }
 
 function openBuilder(editId){
@@ -527,7 +555,8 @@ function editCustomFromCart(id){
 /* ══ ФОРМА КОНТАКТОВ ══ */
 function openContactForm(){
   const ids=Object.keys(cart);
-  if(!ids.length)return; // защита от пустого заказа
+  if(!ids.length)return;
+  if(!ordersOpen){alert('😔 Приём заказов сейчас приостановлен. Попробуйте позже!');return;}
   closeOrderModal();
   document.getElementById('contact-ov').classList.add('open');
   setTimeout(()=>document.getElementById('inp-name').focus(),300);
@@ -555,8 +584,25 @@ function confirmOrder(){
   else{alert(`Заказ оформлен!\n${name} · ${phone}\nИтого: ${total.toLocaleString('ru')} ₽`);closeContactForm();}
 }
 
+/* ══ СТАТУС ЗАКАЗОВ ══ */
+let ordersOpen=true;
+// URL файла status.json в GitHub репозитории — обновляется ботом через /close и /open
+const STATUS_URL='https://raw.githubusercontent.com/aidarnasretdinov/trdelnik/main/status.json';
+
+async function checkOrdersStatus(){
+  try{
+    const res=await fetch(STATUS_URL+'?t='+Date.now());
+    if(res.ok){const d=await res.json();ordersOpen=d.open!==false;}
+  }catch(e){ordersOpen=true;}
+  const banner=document.getElementById('closed-banner');
+  const btn=document.getElementById('checkout-btn');
+  if(!ordersOpen){banner.style.display='block';if(btn)btn.disabled=true;}
+  else{banner.style.display='none';if(btn)btn.disabled=false;}
+}
+
 /* ══ INIT ══ */
 selectCat('sweet');
+checkOrdersStatus();
 if(window.Telegram&&window.Telegram.WebApp){
   Telegram.WebApp.ready();
   Telegram.WebApp.expand();
