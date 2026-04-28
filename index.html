@@ -542,6 +542,10 @@ function buildOrderHTML(){
 function openOrderModal(){
   const ids=Object.keys(cart);
   if(!ids.length)return;
+  // Закрываем детальную карточку если открыта
+  closeDetail();
+  // Скрываем MainButton пока шторка заказа открыта — убираем дубль
+  if(window.Telegram&&Telegram.WebApp.MainButton) Telegram.WebApp.MainButton.hide();
   refreshOrderModal();
   document.getElementById('order-ov').classList.add('open');
 }
@@ -552,7 +556,11 @@ function refreshOrderModal(){
   document.getElementById('order-total').textContent=total.toLocaleString('ru')+' ₽';
 }
 
-function closeOrderModal(){document.getElementById('order-ov').classList.remove('open');}
+function closeOrderModal(){
+  document.getElementById('order-ov').classList.remove('open');
+  // Возвращаем MainButton если корзина не пуста
+  updateCart();
+}
 
 function editCustomFromCart(id){
   closeOrderModal();
@@ -565,10 +573,14 @@ function openContactForm(){
   if(!ids.length)return;
   if(!ordersOpen){alert('😔 Приём заказов сейчас приостановлен. Попробуйте позже!');return;}
   closeOrderModal();
+  if(window.Telegram&&Telegram.WebApp.MainButton) Telegram.WebApp.MainButton.hide();
   document.getElementById('contact-ov').classList.add('open');
   setTimeout(()=>document.getElementById('inp-name').focus(),300);
 }
-function closeContactForm(){document.getElementById('contact-ov').classList.remove('open');}
+function closeContactForm(){
+  document.getElementById('contact-ov').classList.remove('open');
+  updateCart();
+}
 
 function confirmOrder(){
   const ids=Object.keys(cart);
