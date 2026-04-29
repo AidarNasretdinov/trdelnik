@@ -243,7 +243,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="stitle">Ваши данные</div>
     <div class="ssub">Нужны для связи по заказу</div>
     <div class="fld">
-      <label class="flbl">Точка самовывоза</label>
+      <label class="flbl">Точка самовывоза <span style="color:var(--red)">*</span></label>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:2px" id="location-list">
         <div class="loc-chip" onclick="selectLoc(this,'Набережная')">📍 Набережная</div>
         <div class="loc-chip" onclick="selectLoc(this,'Абсалямова')">📍 Абсалямова</div>
@@ -612,6 +612,7 @@ function selectLoc(el,loc){
   el.classList.add('sel');
   selectedLoc=loc;
   document.getElementById('err-loc').classList.remove('show');
+  document.getElementById('location-list').style.outline='none';
 }
 
 /* ══ ФОРМА КОНТАКТОВ ══ */
@@ -639,10 +640,23 @@ function confirmOrder(){
   const name=document.getElementById('inp-name').value.trim();
   const phone=document.getElementById('inp-phone').value.trim();
   let ok=true;
-  if(!selectedLoc){document.getElementById('err-loc').classList.add('show');ok=false;}
+  if(!selectedLoc){
+    document.getElementById('err-loc').classList.add('show');
+    document.getElementById('location-list').style.outline='2px solid var(--red)';
+    document.getElementById('location-list').style.borderRadius='12px';
+    ok=false;
+  } else {
+    document.getElementById('err-loc').classList.remove('show');
+    document.getElementById('location-list').style.outline='none';
+  }
   if(!name){document.getElementById('err-name').classList.add('show');ok=false;}else document.getElementById('err-name').classList.remove('show');
   if(!phone||phone.replace(/\D/g,'').length<7){document.getElementById('err-phone').classList.add('show');ok=false;}else document.getElementById('err-phone').classList.remove('show');
-  if(!ok)return;
+  if(!ok){
+    // Скроллим к первой ошибке
+    const firstErr=document.querySelector('#contact-ov .ferr.show');
+    if(firstErr) firstErr.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
   const total=ids.reduce((s,id)=>s+cart[id]*getPriceById(id),0);
   const items=ids.map(id=>{
     const item=getItemById(id);
