@@ -117,6 +117,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .finput::placeholder{color:#bbb}
 .ferr{font-size:12px;color:var(--red);margin-top:2px;display:none}
 .ferr.show{display:block}
+.loc-chip{padding:13px 16px;border-radius:12px;background:var(--sf);border:2px solid transparent;font-size:15px;font-weight:600;cursor:pointer;transition:background .12s,border-color .12s;user-select:none}
+.loc-chip:active{opacity:.7}
+.loc-chip.sel{background:var(--y);border-color:var(--yd)}
 
 /* detail */
 .dov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-end}
@@ -239,6 +242,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="hdl"></div>
     <div class="stitle">Ваши данные</div>
     <div class="ssub">Нужны для связи по заказу</div>
+    <div class="fld">
+      <label class="flbl">Точка самовывоза</label>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:2px" id="location-list">
+        <div class="loc-chip" onclick="selectLoc(this,'Набережная')">📍 Набережная</div>
+        <div class="loc-chip" onclick="selectLoc(this,'Абсалямова')">📍 Абсалямова</div>
+        <div class="loc-chip" onclick="selectLoc(this,'Курынова')">📍 Курынова</div>
+      </div>
+      <div class="ferr" id="err-loc">Выберите точку самовывоза</div>
+    </div>
     <div class="fld">
       <label class="flbl">Имя</label>
       <input class="finput" id="inp-name" type="text" placeholder="Как вас зовут?" autocomplete="name">
@@ -593,6 +605,15 @@ function editCustomFromCart(id){
   openBuilder(id);
 }
 
+/* ══ ЛОКАЦИЯ ══ */
+let selectedLoc='';
+function selectLoc(el,loc){
+  document.querySelectorAll('.loc-chip').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  selectedLoc=loc;
+  document.getElementById('err-loc').classList.remove('show');
+}
+
 /* ══ ФОРМА КОНТАКТОВ ══ */
 function openContactForm(){
   const ids=Object.keys(cart);
@@ -600,6 +621,10 @@ function openContactForm(){
   if(!ordersOpen){alert('😔 Приём заказов сейчас приостановлен. Попробуйте позже!');return;}
   closeOrderModal();
   if(window.Telegram&&Telegram.WebApp.MainButton) Telegram.WebApp.MainButton.hide();
+  // сбрасываем локацию при каждом открытии
+  selectedLoc='';
+  document.querySelectorAll('.loc-chip').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('err-loc').classList.remove('show');
   document.getElementById('contact-ov').classList.add('open');
   setTimeout(()=>document.getElementById('inp-name').focus(),300);
 }
@@ -614,6 +639,7 @@ function confirmOrder(){
   const name=document.getElementById('inp-name').value.trim();
   const phone=document.getElementById('inp-phone').value.trim();
   let ok=true;
+  if(!selectedLoc){document.getElementById('err-loc').classList.add('show');ok=false;}
   if(!name){document.getElementById('err-name').classList.add('show');ok=false;}else document.getElementById('err-name').classList.remove('show');
   if(!phone||phone.replace(/\D/g,'').length<7){document.getElementById('err-phone').classList.add('show');ok=false;}else document.getElementById('err-phone').classList.remove('show');
   if(!ok)return;
@@ -624,7 +650,7 @@ function confirmOrder(){
     if(id.startsWith('custom_'))Object.assign(obj,{custom:true,base:item.base,fillings:item.fillings,toppings:item.toppings});
     return obj;
   });
-  const data={name,phone,items,total};
+  const data={name,phone,location:selectedLoc,items,total};
   if(window.Telegram&&window.Telegram.WebApp)Telegram.WebApp.sendData(JSON.stringify(data));
   else{alert(`Заказ оформлен!\n${name} · ${phone}\nИтого: ${total.toLocaleString('ru')} ₽`);closeContactForm();}
 }
