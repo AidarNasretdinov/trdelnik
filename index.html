@@ -122,8 +122,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:flex-end}
 .dov.open{display:flex}
 .dsh{background:var(--bg);border-radius:24px 24px 0 0;width:100%;max-height:85vh;overflow-y:auto;animation:su .28s cubic-bezier(.32,.72,0,1) both}
-.dhero{background:var(--sf);border-radius:24px 24px 0 0;display:flex;align-items:center;justify-content:center;height:220px;font-size:90px;position:relative;overflow:hidden}
-.dhero img{width:100%;height:100%;object-fit:cover}
+.dhero{background:var(--y);border-radius:24px 24px 0 0;display:flex;align-items:center;justify-content:center;height:280px;font-size:90px;position:relative;overflow:hidden}
+.dhero img{width:100%;height:100%;object-fit:contain}
 .dclose{position:absolute;top:14px;right:14px;width:32px;height:32px;background:rgba(0,0,0,.12);border:none;border-radius:50%;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .dbody{padding:20px 20px 36px}
 .dnew{font-size:11px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
@@ -271,7 +271,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div class="bsec">
       <div class="bshdr"><span class="bst">Топинги</span><span class="bsp">85 ₽ / шт</span></div>
-      <div class="bsnote">Необязательно · можно несколько</div>
+      <div class="bsnote" id="topping-note">Сначала выбери начинку</div>
       <div class="ogrid" id="b-toppings"></div>
     </div>
     <div class="bsum"><span class="bsuml">Итого</span><span class="bsump" id="b-price">250 ₽</span></div>
@@ -338,6 +338,8 @@ function renderBuilder(){
   }).join('');
   // Топинги требуют хотя бы одну начинку
   const hasFilling=bState.fillings.length>0;
+  const tnote=document.getElementById('topping-note');
+  if(tnote) tnote.textContent=hasFilling?'Необязательно · можно несколько':'Сначала выбери начинку';
   document.getElementById('b-toppings').innerHTML=BD.toppings.map(t=>
     `<div class="chip${bState.toppings.includes(t.id)?' sel':''}${!hasFilling?' disabled':''}" onclick="togTopping('${t.id}')">${t.n}</div>`).join('');
   const total=bTotal();
@@ -394,7 +396,12 @@ function openBuilder(editId){
   document.body.style.overflow='hidden';
 }
 
-function closeBuilder(){ document.getElementById('bov').classList.remove('open'); document.body.style.overflow=''; }
+function closeBuilder(){
+  document.getElementById('bov').classList.remove('open');
+  // Сбрасываем overflow только если не открыто другое оверлей
+  const anyOpen=document.querySelector('.dov.open,.overlay.open');
+  if(!anyOpen) document.body.style.overflow='';
+}
 
 const customItems={};
 let customCnt=0;
@@ -506,7 +513,11 @@ function openDetail(id){
   // Hero: фото или эмодзи
   const heroEl=document.getElementById('d-emoji');
   if(item.img){
-    heroEl.innerHTML=`<img src="${item.img}" alt="${item.name}" style="width:100%;height:100%;object-fit:cover;border-radius:24px 24px 0 0" onerror="this.outerHTML='<span style=\\'font-size:90px\\'>${item.emoji}</span>'">`;
+    const img=document.createElement('img');
+    img.src=item.img; img.alt=item.name;
+    img.style.cssText='width:100%;height:100%;object-fit:contain';
+    img.onerror=function(){heroEl.innerHTML='<span style="font-size:90px">'+item.emoji+'</span>';};
+    heroEl.innerHTML=''; heroEl.appendChild(img);
   } else {
     heroEl.textContent=item.emoji;
   }
@@ -610,7 +621,7 @@ function confirmOrder(){
   const items=ids.map(id=>{
     const item=getItemById(id);
     const obj={id,qty:cart[id],price:getPriceById(id),name:item.name};
-    if(id.startsWith('custom_'))Object.assign(obj,{base:item.base,fillings:item.fillings,toppings:item.toppings});
+    if(id.startsWith('custom_'))Object.assign(obj,{custom:true,base:item.base,fillings:item.fillings,toppings:item.toppings});
     return obj;
   });
   const data={name,phone,items,total};
