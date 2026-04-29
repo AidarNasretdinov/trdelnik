@@ -626,7 +626,10 @@ function openContactForm(){
   selectedLoc='';
   document.querySelectorAll('.loc-chip').forEach(c=>c.classList.remove('sel'));
   document.getElementById('err-loc').classList.remove('show');
+  document.getElementById('location-list').style.outline='none';
   document.getElementById('contact-ov').classList.add('open');
+  // скроллим шторку в начало
+  setTimeout(()=>{const s=document.querySelector('#contact-ov .sheet');if(s)s.scrollTop=0;},50);
   setTimeout(()=>document.getElementById('inp-name').focus(),300);
 }
 function closeContactForm(){
@@ -652,9 +655,9 @@ function confirmOrder(){
   if(!name){document.getElementById('err-name').classList.add('show');ok=false;}else document.getElementById('err-name').classList.remove('show');
   if(!phone||phone.replace(/\D/g,'').length<7){document.getElementById('err-phone').classList.add('show');ok=false;}else document.getElementById('err-phone').classList.remove('show');
   if(!ok){
-    // Скроллим к первой ошибке
-    const firstErr=document.querySelector('#contact-ov .ferr.show');
-    if(firstErr) firstErr.scrollIntoView({behavior:'smooth',block:'center'});
+    // Скроллим шторку в начало чтобы ошибка была видна
+    const sheet=document.querySelector('#contact-ov .sheet');
+    if(sheet) sheet.scrollTop=0;
     return;
   }
   const total=ids.reduce((s,id)=>s+cart[id]*getPriceById(id),0);
