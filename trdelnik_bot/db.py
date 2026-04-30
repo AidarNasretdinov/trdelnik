@@ -67,6 +67,37 @@ def update_order(order_id: int, **kwargs):
         conn.commit()
 
 
+def list_orders_today() -> list[dict]:
+    """Все заказы за сегодня (по московскому времени)."""
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            "SELECT * FROM orders WHERE date(created_at, '+3 hours') = date('now', '+3 hours') ORDER BY id ASC"
+        ).fetchall()
+        result = []
+        for row in rows:
+            d = dict(row)
+            d["items"] = json.loads(d["items"])
+            result.append(d)
+        return result
+
+
+def list_orders_by_date(date_str: str) -> list[dict]:
+    """Заказы за конкретную дату в формате YYYY-MM-DD (МСК UTC+3)."""
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            "SELECT * FROM orders WHERE date(created_at, '+3 hours') = ? ORDER BY id ASC",
+            (date_str,),
+        ).fetchall()
+        result = []
+        for row in rows:
+            d = dict(row)
+            d["items"] = json.loads(d["items"])
+            result.append(d)
+        return result
+
+
 def list_orders(status: str | None = None, limit: int = 20) -> list[dict]:
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
