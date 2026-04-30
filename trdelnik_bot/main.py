@@ -12,7 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    KeyboardButton,
     MenuButtonWebApp,
+    ReplyKeyboardMarkup,
     Update,
     WebAppInfo,
 )
@@ -23,7 +25,7 @@ from telegram.ext import (
     ContextTypes,
 )
 
-from db import create_order, get_order, init_db, list_orders, update_order
+from db import create_order, get_order, init_db, list_orders, list_orders_by_date, list_orders_today, update_order
 from verify import verify_init_data
 
 load_dotenv()
@@ -157,6 +159,47 @@ async def cmd_close(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🔴 Приём заказов приостановлен!{note}")
 
 
+async def cmd_admin(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.id != OWNER_CHAT_ID:
+        return
+    admin_url = WEBAPP_URL.rstrip("/") + "/admin.html"
+    kb = ReplyKeyboardMarkup(
+        [[KeyboardButton("⚙️ Открыть панель управления", web_app=WebAppInfo(url=admin_url))]],
+        resize_keyboard=True,
+    )
+    await update.message.reply_text("Открываю панель управления 👇", reply_markup=kb)
+
+
+async def cmd_orders(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.id != OWNER_CHAT_ID:
+        return
+    orders = list_orders_today()
+    if not orders:
+        await update.message.reply_text("📭 Сегодня заказов ещё нет.")
+        return
+
+    STATUS_EMOJI = {"new": "🆕", "accepted": "✅", "tenmin": "⏱", "ready": "🏁", "rejected": "❌"}
+    lines = [f"📋 Заказы за сегодня ({len(orders)} шт)\n"]
+    total_revenue = 0
+
+    for o in orders:
+        emoji = STATUS_EMOJI.get(o["status"], "❓")
+        lines.append(f"{emoji} #{o['id']} — {o['name']}, {o['location']}")
+        for item in o["items"]:
+            qty = item.get("qty", 1)
+            name = item.get("name", "?")
+            price = item.get("price", 0)
+            lines.append(f"   • {name} ×{qty} — {price * qty}₽")
+        lines.append(f"   💰 {o['total']}₽\n")
+        if o["status"] != "rejected":
+            total_revenue += o["total"]
+
+    lines.append(f"─────────────────")
+    lines.append(f"💵 Выручка за день: {total_revenue}₽")
+
+    await update.message.reply_text("\n".join(lines))
+
+
 async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.id != OWNER_CHAT_ID:
         return
@@ -284,10 +327,12 @@ async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 # ── Register handlers ──────────────────────────────────────────────────────────
 
-tg_app.add_handler(CommandHandler("start",  cmd_start))
-tg_app.add_handler(CommandHandler("open",   cmd_open))
-tg_app.add_handler(CommandHandler("close",  cmd_close))
-tg_app.add_handler(CommandHandler("status", cmd_status))
+tg_app.add_handler(CommandHandler("start",   cmd_start))
+tg_app.add_handler(CommandHandler("open",    cmd_open))
+tg_app.add_handler(CommandHandler("close",   cmd_close))
+tg_app.add_handler(CommandHandler("status",  cmd_status))
+tg_app.add_handler(CommandHandler("orders",  cmd_orders))
+tg_app.add_handler(CommandHandler("admin",   cmd_admin))
 tg_app.add_handler(CallbackQueryHandler(on_callback))
 
 
@@ -428,6 +473,56 @@ async def receive_order(request: Request):
 @api.get("/health")
 async def health():
     return {"ok": True, "orders_open": orders_open}
+
+
+# ── Admin endpoints ────────────────────────────────────────────────────────────
+
+def require_owner(request: Request) -> int:
+    """Проверяет initData и возвращает telegram_user_id. Кидает 403 если не владелец."""
+    init_data = request.headers.get("X-Init-Data", "")
+    if not init_data:
+        raise HTTPException(status_code=403, detail="Missing initData")
+    parsed = verify_init_data(init_data, BOT_TOKEN)
+    if not parsed:
+        raise HTTPException(status_code=403, detail="Invalid initData")
+    user = parsed.get("user", {})
+    if isinstance(user, str):
+        try:
+            user = json.loads(user)
+        except Exception:
+            user = {}
+    uid = user.get("id", 0)
+    if uid != OWNER_CHAT_ID:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return uid
+
+
+@api.get("/admin/status")
+async def admin_status(request: Request):
+    require_owner(request)
+    return {"ok": True, "orders_open": orders_open}
+
+
+@api.post("/admin/toggle")
+async def admin_toggle(request: Request):
+    global orders_open
+    require_owner(request)
+    body = await request.json()
+    orders_open = bool(body.get("open", not orders_open))
+    ok = await update_github_status(orders_open)
+    return {"ok": True, "orders_open": orders_open, "github_synced": ok}
+
+
+@api.get("/admin/orders")
+async def admin_orders(request: Request, date: str = ""):
+    require_owner(request)
+    from datetime import datetime, timezone, timedelta
+    if not date:
+        msk = timezone(timedelta(hours=3))
+        date = datetime.now(msk).strftime("%Y-%m-%d")
+    orders = list_orders_by_date(date)
+    revenue = sum(o["total"] for o in orders if o["status"] != "rejected")
+    return {"ok": True, "date": date, "orders": orders, "revenue": revenue}
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────
