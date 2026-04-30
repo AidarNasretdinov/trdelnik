@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import json
+import logging
 import os
 from contextlib import asynccontextmanager
 
@@ -9,6 +10,9 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -28,6 +32,17 @@ from verify import verify_init_data
 
 load_dotenv()
 
+# ── Logging ────────────────────────────────────────────────────────────────────
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("trdelnik")
+
+# ── Config ─────────────────────────────────────────────────────────────────────
+
 BOT_TOKEN     = os.getenv("BOT_TOKEN")
 OWNER_CHAT_ID = int(os.getenv("OWNER_CHAT_ID"))
 WEBAPP_URL    = os.getenv("WEBAPP_URL")
@@ -39,20 +54,20 @@ PORT          = int(os.getenv("PORT", 8000))
 # Флаг приёма заказов
 orders_open: bool = True
 
-# Начинки которые добавляем при клиенте (названия, как хранит мини-апп)
-COLD_FILLINGS = {"Мороженое", "Взбитые сливки"}
-# Пресеты с мороженым или сливками
-COLD_PRESET_IDS = {"s1", "s2", "s3", "s4"}
+COLD_FILLINGS    = {"Мороженое", "Взбитые сливки"}
+COLD_PRESET_IDS  = {"s1", "s2", "s3", "s4"}
 
 # ── Telegram Application ───────────────────────────────────────────────────────
 
 tg_app = ApplicationBuilder().token(BOT_TOKEN).build()
 
+# ── Rate limiter ───────────────────────────────────────────────────────────────
+
+limiter = Limiter(key_func=get_remote_address)
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def has_cold_filling(order_data: dict) -> bool:
-    """Есть ли в заказе мороженое или взбитые сливки."""
     for item in order_data.get("items", []):
         if item.get("custom"):
             if any(f in COLD_FILLINGS for f in item.get("fillings", [])):
@@ -123,7 +138,7 @@ async def update_github_status(open_status: bool) -> bool:
             put = await client.put(url, headers=headers, json=payload)
             return put.status_code in (200, 201)
     except Exception as e:
-        print(f"GitHub API error: {e}")
+        logger.error(f"GitHub API error: {e}")
         return False
 
 
@@ -214,15 +229,18 @@ async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
-    action, oid_str = query.data.split(":", 1)
-    oid   = int(oid_str)
-    order = get_order(oid)
+    # Защита от некорректного формата callback_data
+    try:
+        action, oid_str = query.data.split(":", 1)
+        oid = int(oid_str)
+    except (ValueError, AttributeError):
+        await query.answer("Некорректный запрос.", show_alert=True)
+        return
 
+    order = get_order(oid)
     if not order:
         await query.answer("Заказ не найден.", show_alert=True)
         return
-
-    await query.answer()
 
     customer_id = order["telegram_user_id"]
     name        = order["name"]
@@ -240,6 +258,7 @@ async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if order["status"] != "new":
             await query.answer("Статус уже изменён.", show_alert=True)
             return
+        await query.answer()
         update_order(oid, status="accepted")
 
         kb = InlineKeyboardMarkup([[
@@ -258,13 +277,14 @@ async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             try:
                 await ctx.bot.send_message(chat_id=customer_id, text=msg)
             except Exception as e:
-                print(f"[CALLBACK] accept: failed to notify customer: {e}")
+                logger.warning(f"accept #{oid}: не удалось уведомить клиента: {e}")
 
     # ── Готово через 10 минут ─────────────────────────────────────────────────
     elif action == "tenmin":
         if order["status"] != "accepted":
             await query.answer("Статус уже изменён.", show_alert=True)
             return
+        await query.answer()
         update_order(oid, status="tenmin")
 
         kb = InlineKeyboardMarkup([[
@@ -281,13 +301,14 @@ async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                     text=f"⏱ {name}, ваш заказ #{oid} будет готов примерно через 10 минут!\nПодходите 🚶",
                 )
             except Exception as e:
-                print(f"[CALLBACK] tenmin: failed to notify customer: {e}")
+                logger.warning(f"tenmin #{oid}: не удалось уведомить клиента: {e}")
 
     # ── Выдать заказ ─────────────────────────────────────────────────────────
     elif action == "ready":
         if order["status"] not in ("accepted", "tenmin"):
             await query.answer("Статус уже изменён.", show_alert=True)
             return
+        await query.answer()
         update_order(oid, status="ready")
 
         await query.edit_message_text(text="🏁 Выдан\n\n" + format_order(data, oid))
@@ -299,13 +320,14 @@ async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             try:
                 await ctx.bot.send_message(chat_id=customer_id, text=msg)
             except Exception as e:
-                print(f"[CALLBACK] ready: failed to notify customer: {e}")
+                logger.warning(f"ready #{oid}: не удалось уведомить клиента: {e}")
 
     # ── Отклонить ─────────────────────────────────────────────────────────────
     elif action == "reject":
         if order["status"] in ("ready", "rejected"):
             await query.answer("Статус уже изменён.", show_alert=True)
             return
+        await query.answer()
         update_order(oid, status="rejected")
 
         await query.edit_message_text(text="❌ Отклонён\n\n" + format_order(data, oid))
@@ -319,7 +341,10 @@ async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                     ),
                 )
             except Exception as e:
-                print(f"[CALLBACK] reject: failed to notify customer: {e}")
+                logger.warning(f"reject #{oid}: не удалось уведомить клиента: {e}")
+
+    else:
+        await query.answer("Неизвестное действие.", show_alert=True)
 
 
 # ── Register handlers ──────────────────────────────────────────────────────────
@@ -347,9 +372,9 @@ async def sync_orders_open_from_github():
             if r.status_code == 200:
                 data = r.json()
                 orders_open = data.get("open", True)
-                print(f"[STARTUP] orders_open synced from GitHub: {orders_open}")
+                logger.info(f"orders_open synced from GitHub: {orders_open}")
     except Exception as e:
-        print(f"[STARTUP] failed to sync orders_open from GitHub: {e}")
+        logger.error(f"Не удалось синхронизировать orders_open с GitHub: {e}")
 
 
 @asynccontextmanager
@@ -362,7 +387,7 @@ async def lifespan(app: FastAPI):
     await tg_app.bot.set_chat_menu_button(
         menu_button=MenuButtonWebApp(text="🥐 Меню", web_app=WebAppInfo(url=WEBAPP_URL))
     )
-    print(f"✅ Бот и API запущены. Порт: {PORT}")
+    logger.info(f"Бот и API запущены. Порт: {PORT}")
     yield
     await tg_app.updater.stop()
     await tg_app.stop()
@@ -370,6 +395,9 @@ async def lifespan(app: FastAPI):
 
 
 api = FastAPI(lifespan=lifespan)
+
+api.state.limiter = limiter
+api.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 api.add_middleware(
     CORSMiddleware,
@@ -380,12 +408,12 @@ api.add_middleware(
 
 
 @api.post("/order")
+@limiter.limit("10/minute")
 async def receive_order(request: Request):
     global orders_open
 
     body       = await request.json()
     init_data  = body.get("initData", "")
-    tg_user_id_hint = int(body.get("tgUserId", 0) or 0)
     order_data = body.get("order", {})
 
     # Верификация подписи Telegram
@@ -400,14 +428,11 @@ async def receive_order(request: Request):
                 except Exception:
                     user = {}
             telegram_user_id = user.get("id", 0)
-            print(f"[ORDER] telegram_user_id from verified initData: {telegram_user_id}")
+            logger.info(f"[ORDER] telegram_user_id из initData: {telegram_user_id}")
         else:
-            print(f"[ORDER] initData verification FAILED, using tgUserId hint")
-
-    # Fallback: берём user_id из initDataUnsafe, переданного клиентом
-    if not telegram_user_id:
-        telegram_user_id = tg_user_id_hint
-        print(f"[ORDER] using tgUserId fallback: {telegram_user_id}")
+            logger.warning("[ORDER] initData не прошла верификацию — уведомление клиенту пропущено")
+    else:
+        logger.warning("[ORDER] initData отсутствует — уведомление клиенту пропущено")
 
     if not orders_open:
         return {"ok": False, "error": "orders_closed"}
@@ -419,7 +444,7 @@ async def receive_order(request: Request):
     total    = order_data.get("total", 0)
 
     oid = create_order(telegram_user_id, name, phone, location, items, total)
-    print(f"[ORDER] created order #{oid} for user {telegram_user_id}")
+    logger.info(f"[ORDER] создан заказ #{oid} для user_id={telegram_user_id}")
 
     data_fmt = {"name": name, "phone": phone, "location": location, "items": items, "total": total}
     cold     = has_cold_filling(data_fmt)
@@ -439,9 +464,9 @@ async def receive_order(request: Request):
             )
             customer_msg_id = customer_msg.message_id
         except Exception as e:
-            print(f"[ORDER] failed to send customer message: {e}")
+            logger.error(f"[ORDER] #{oid}: не удалось отправить клиенту: {e}")
     else:
-        print(f"[ORDER] no telegram_user_id — skipping customer notification")
+        logger.info(f"[ORDER] #{oid}: telegram_user_id неизвестен — уведомление клиенту пропущено")
 
     # Уведомление владельцу
     owner_text = "🆕 Новый заказ!\n\n" + format_order(data_fmt, oid)
@@ -455,7 +480,7 @@ async def receive_order(request: Request):
         )
         owner_msg_id = owner_msg.message_id
     except Exception as e:
-        print(f"[ORDER] failed to send owner message: {e}")
+        logger.error(f"[ORDER] #{oid}: не удалось отправить владельцу: {e}")
         owner_msg_id = None
 
     update_order(
@@ -507,6 +532,7 @@ async def admin_toggle(request: Request):
     body = await request.json()
     orders_open = bool(body.get("open", not orders_open))
     ok = await update_github_status(orders_open)
+    logger.info(f"[ADMIN] orders_open → {orders_open} (github_synced={ok})")
     return {"ok": True, "orders_open": orders_open, "github_synced": ok}
 
 
