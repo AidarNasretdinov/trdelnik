@@ -1,8 +1,14 @@
 import json
+import os
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "orders.db"
+# Путь к БД — переопределяется через env, чтобы использовать Railway Volume:
+#   DB_PATH=/data/orders.db  (примонтируй Volume к /data в Railway)
+DB_PATH = Path(os.getenv("DB_PATH", str(Path(__file__).parent / "orders.db")))
+
+# Только эти поля разрешено обновлять через update_order()
+ALLOWED_UPDATE_FIELDS = {"status", "customer_msg_id", "owner_msg_id"}
 
 
 def init_db():
@@ -22,6 +28,13 @@ def init_db():
                 created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # Индексы для ускорения типовых запросов
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)"
+        )
         conn.commit()
 
 
@@ -60,6 +73,9 @@ def get_order(order_id: int) -> dict | None:
 def update_order(order_id: int, **kwargs):
     if not kwargs:
         return
+    invalid = set(kwargs) - ALLOWED_UPDATE_FIELDS
+    if invalid:
+        raise ValueError(f"update_order: недопустимые поля: {invalid}")
     sets = ", ".join(f"{k} = ?" for k in kwargs)
     vals = list(kwargs.values()) + [order_id]
     with sqlite3.connect(DB_PATH) as conn:
@@ -82,13 +98,13 @@ def list_orders_today() -> list[dict]:
         return result
 
 
-def list_orders_by_date(date_str: str) -> list[dict]:
+def list_orders_by_date(date_str: str, limit: int = 500) -> list[dict]:
     """Заказы за конкретную дату в формате YYYY-MM-DD (МСК UTC+3)."""
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
-            "SELECT * FROM orders WHERE date(created_at, '+3 hours') = ? ORDER BY id ASC",
-            (date_str,),
+            "SELECT * FROM orders WHERE date(created_at, '+3 hours') = ? ORDER BY id ASC LIMIT ?",
+            (date_str, limit),
         ).fetchall()
         result = []
         for row in rows:
