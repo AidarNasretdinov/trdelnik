@@ -12,9 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    KeyboardButton,
     MenuButtonWebApp,
-    ReplyKeyboardMarkup,
     Update,
     WebAppInfo,
 )
@@ -163,10 +161,9 @@ async def cmd_admin(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.id != OWNER_CHAT_ID:
         return
     admin_url = WEBAPP_URL.rstrip("/") + "/admin.html"
-    kb = ReplyKeyboardMarkup(
-        [[KeyboardButton("⚙️ Открыть панель управления", web_app=WebAppInfo(url=admin_url))]],
-        resize_keyboard=True,
-    )
+    kb = InlineKeyboardMarkup([[
+        InlineKeyboardButton("⚙️ Панель управления", web_app=WebAppInfo(url=admin_url))
+    ]])
     await update.message.reply_text("Открываю панель управления 👇", reply_markup=kb)
 
 
@@ -377,7 +374,7 @@ api = FastAPI(lifespan=lifespan)
 api.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
