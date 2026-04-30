@@ -672,8 +672,10 @@ function confirmOrder(){
     return obj;
   });
   const order={name,phone,location:selectedLoc,items,total};
+  const twa=window.Telegram?.WebApp;
   const payload={
-    initData: window.Telegram?.WebApp?.initData || '',
+    initData: twa?.initData || '',
+    tgUserId: twa?.initDataUnsafe?.user?.id || 0,
     order,
   };
 
