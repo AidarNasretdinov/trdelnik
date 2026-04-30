@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Трдельник — Меню</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+  // URL бэкенда — замени на свой Railway-адрес после деплоя
+  const BACKEND_URL = 'https://lucky-insight-production-ca3a.up.railway.app';
+</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 button{color:var(--tx);-webkit-appearance:none;}
@@ -667,18 +671,42 @@ function confirmOrder(){
     if(id.startsWith('custom_'))Object.assign(obj,{custom:true,base:item.base,fillings:item.fillings,toppings:item.toppings});
     return obj;
   });
-  const data={name,phone,location:selectedLoc,items,total};
-  try{
-    if(window.Telegram&&window.Telegram.WebApp){
-      Telegram.WebApp.sendData(JSON.stringify(data));
-    } else {
-      alert(`Заказ оформлен!\n📍 ${selectedLoc}\n${name} · ${phone}\nИтого: ${total.toLocaleString('ru')} ₽`);
+  const order={name,phone,location:selectedLoc,items,total};
+  const payload={
+    initData: window.Telegram?.WebApp?.initData || '',
+    order,
+  };
+
+  // Блокируем кнопку на время запроса
+  const btn=document.querySelector('#contact-ov .ybtn');
+  const origText=btn.textContent;
+  btn.disabled=true;
+  btn.textContent='Отправляем...';
+
+  fetch(BACKEND_URL+'/order',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload),
+  })
+  .then(r=>r.json())
+  .then(res=>{
+    if(res.ok){
       closeContactForm();
+      if(window.Telegram?.WebApp) Telegram.WebApp.close();
+      else alert('Заказ оформлен! Ожидайте сообщения в чате 🙏');
+    } else if(res.error==='orders_closed'){
+      alert('😔 Приём заказов сейчас приостановлен. Попробуйте позже!');
+    } else {
+      alert('Ошибка при оформлении заказа. Попробуйте ещё раз.');
     }
-  } catch(e){
-    alert('Ошибка при отправке заказа. Пожалуйста, откройте меню через кнопку «🥐 Открыть меню» в чате.');
-    console.error('sendData error:',e);
-  }
+  })
+  .catch(()=>{
+    alert('Нет соединения. Проверьте интернет и попробуйте снова.');
+  })
+  .finally(()=>{
+    btn.disabled=false;
+    btn.textContent=origText;
+  });
 }
 
 /* ══ СТАТУС ЗАКАЗОВ ══ */
