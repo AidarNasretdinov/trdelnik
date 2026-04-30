@@ -313,25 +313,29 @@ async def receive_order(request: Request):
 
     body       = await request.json()
     init_data  = body.get("initData", "")
+    tg_user_id_hint = int(body.get("tgUserId", 0) or 0)
     order_data = body.get("order", {})
 
     # Верификация подписи Telegram
+    telegram_user_id = 0
     if init_data:
         parsed = verify_init_data(init_data, BOT_TOKEN)
-        if not parsed:
-            print(f"[ORDER] initData verification FAILED")
-            raise HTTPException(status_code=403, detail="Invalid Telegram initData")
-        user = parsed.get("user", {})
-        if isinstance(user, str):
-            try:
-                user = json.loads(user)
-            except Exception:
-                user = {}
-        telegram_user_id = user.get("id", 0)
-        print(f"[ORDER] telegram_user_id from initData: {telegram_user_id}")
-    else:
-        telegram_user_id = order_data.get("telegram_user_id", 0)
-        print(f"[ORDER] no initData, telegram_user_id: {telegram_user_id}")
+        if parsed:
+            user = parsed.get("user", {})
+            if isinstance(user, str):
+                try:
+                    user = json.loads(user)
+                except Exception:
+                    user = {}
+            telegram_user_id = user.get("id", 0)
+            print(f"[ORDER] telegram_user_id from verified initData: {telegram_user_id}")
+        else:
+            print(f"[ORDER] initData verification FAILED, using tgUserId hint")
+
+    # Fallback: берём user_id из initDataUnsafe, переданного клиентом
+    if not telegram_user_id:
+        telegram_user_id = tg_user_id_hint
+        print(f"[ORDER] using tgUserId fallback: {telegram_user_id}")
 
     if not telegram_user_id:
         return {"ok": False, "error": "no_user_id", "detail": "Could not identify Telegram user"}
