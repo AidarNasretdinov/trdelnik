@@ -623,7 +623,12 @@ function selectLoc(el,loc){
 function openContactForm(){
   const ids=Object.keys(cart);
   if(!ids.length)return;
-  if(!ordersOpen){alert('😔 Приём заказов сейчас приостановлен. Попробуйте позже!');return;}
+  if(!ordersOpen){
+    window.Telegram?.WebApp
+      ? Telegram.WebApp.showAlert('😔 Приём заказов сейчас приостановлен. Попробуйте позже!')
+      : alert('😔 Приём заказов сейчас приостановлен. Попробуйте позже!');
+    return;
+  }
   closeOrderModal();
   if(window.Telegram&&Telegram.WebApp.MainButton) Telegram.WebApp.MainButton.hide();
   // сбрасываем локацию при каждом открытии
@@ -657,7 +662,7 @@ function confirmOrder(){
     document.getElementById('location-list').style.outline='none';
   }
   if(!name){document.getElementById('err-name').classList.add('show');ok=false;}else document.getElementById('err-name').classList.remove('show');
-  if(!phone||phone.replace(/\D/g,'').length<7){document.getElementById('err-phone').classList.add('show');ok=false;}else document.getElementById('err-phone').classList.remove('show');
+  if(!phone||phone.replace(/\D/g,'').length<10){document.getElementById('err-phone').classList.add('show');ok=false;}else document.getElementById('err-phone').classList.remove('show');
   if(!ok){
     // Скроллим шторку в начало чтобы ошибка была видна
     const sheet=document.querySelector('#contact-ov .sheet');
@@ -675,7 +680,6 @@ function confirmOrder(){
   const twa=window.Telegram?.WebApp;
   const payload={
     initData: twa?.initData || '',
-    tgUserId: twa?.initDataUnsafe?.user?.id || 0,
     order,
   };
 
@@ -684,6 +688,10 @@ function confirmOrder(){
   const origText=btn.textContent;
   btn.disabled=true;
   btn.textContent='Отправляем...';
+
+  const tgAlert=(msg,cb)=>window.Telegram?.WebApp
+    ? Telegram.WebApp.showAlert(msg,cb)
+    : (alert(msg), cb&&cb());
 
   fetch(BACKEND_URL+'/order',{
     method:'POST',
@@ -702,15 +710,13 @@ function confirmOrder(){
       if(window.Telegram?.WebApp) Telegram.WebApp.close();
       else alert('Заказ оформлен! Ожидайте сообщения в чате 🙏');
     } else if(res.error==='orders_closed'){
-      alert('😔 Приём заказов сейчас приостановлен. Попробуйте позже!');
-    } else if(res.error==='no_user_id'){
-      alert('Для оформления заказа откройте меню через кнопку «🥐 Открыть меню» в чате — напишите боту /start.');
+      tgAlert('😔 Приём заказов сейчас приостановлен. Попробуйте позже!');
     } else {
-      alert('Ошибка при оформлении заказа. Попробуйте ещё раз.');
+      tgAlert('Ошибка при оформлении заказа. Попробуйте ещё раз.');
     }
   })
   .catch(()=>{
-    alert('Нет соединения. Проверьте интернет и попробуйте снова.');
+    tgAlert('Нет соединения. Проверьте интернет и попробуйте снова.');
   })
   .finally(()=>{
     btn.disabled=false;
