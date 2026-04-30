@@ -388,8 +388,6 @@ async def receive_order(request: Request):
         + format_order(data_fmt, oid)
         + "\n\nОжидайте подтверждения от нашего менеджера 🙏"
     )
-    if cold:
-        customer_text += "\n\n🍦 Мороженое/взбитые сливки добавим прямо при вас!"
 
     customer_msg_id = None
     if telegram_user_id:
