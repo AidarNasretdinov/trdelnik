@@ -48,7 +48,8 @@ input[type=date]{position:absolute;opacity:0;width:0;height:0}
 .stat-label{font-size:10px;color:var(--mu);margin-top:3px;font-weight:600;text-transform:uppercase}
 
 /* Order list */
-.section-title{font-size:13px;font-weight:800;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;padding:16px 16px 0}
+.section-title{font-size:13px;font-weight:800;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;padding:16px 16px 0;display:flex;align-items:center;justify-content:space-between}
+.refresh-hint{font-size:11px;font-weight:400;text-transform:none;letter-spacing:0}
 
 .order-card{background:var(--card);border-radius:var(--r);margin:8px 16px 0;overflow:hidden}
 .order-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer}
@@ -130,7 +131,10 @@ input[type=date]{position:absolute;opacity:0;width:0;height:0}
 </div>
 
 <!-- Список заказов -->
-<div class="section-title">Заказы</div>
+<div class="section-title">
+  Заказы
+  <span class="refresh-hint" id="refresh-hint"></span>
+</div>
 <div id="orders-list"><div class="loading">Загрузка...</div></div>
 
 <script>
@@ -140,16 +144,32 @@ if(twa) twa.ready();
 const BACKEND = BACKEND_URL;
 const initData = twa?.initData || '';
 
-// ── Дата ──────────────────────────────────────────────────────────────────────
-let currentDate = new Date();
-currentDate.setHours(currentDate.getHours() + 3); // МСК
-
-function toDateStr(d){
-  return d.toISOString().slice(0,10);
+// ── XSS-защита ────────────────────────────────────────────────────────────────
+function esc(s){
+  return String(s ?? '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
 }
+
+// ── Дата ──────────────────────────────────────────────────────────────────────
+// Берём дату с устройства — телефон должен быть в правильной таймзоне (МСК).
+function localDateStr(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+let currentDate = new Date();
+
+function toDateStr(d){ return localDateStr(d); }
+
 function formatDateDisplay(d){
-  const today = new Date(); today.setHours(today.getHours()+3);
-  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate()-1);
+  const today = new Date();
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
   const opts = {day:'numeric', month:'long'};
   const label = toDateStr(d)===toDateStr(today) ? 'Сегодня' :
                 toDateStr(d)===toDateStr(yesterday) ? 'Вчера' : '';
@@ -157,10 +177,10 @@ function formatDateDisplay(d){
 }
 
 function changeDate(delta){
-  currentDate.setDate(currentDate.getDate() + delta);
+  currentDate = new Date(currentDate.getTime() + delta * 24 * 60 * 60 * 1000);
   // Нельзя листать в будущее
-  const today = new Date(); today.setHours(today.getHours()+3);
-  if(currentDate > today) { currentDate.setDate(currentDate.getDate() - delta); return; }
+  const today = new Date();
+  if(toDateStr(currentDate) > toDateStr(today)) { currentDate = new Date(currentDate.getTime() - delta * 24 * 60 * 60 * 1000); return; }
   renderDate();
   loadOrders();
 }
@@ -217,20 +237,46 @@ async function toggleOrders(){
   toggleBusy = false;
 }
 
-async function loadOrders(){
+// ── Авто-обновление ───────────────────────────────────────────────────────────
+const REFRESH_INTERVAL = 30; // секунды
+let refreshTimer = null;
+let secondsLeft = REFRESH_INTERVAL;
+
+function startAutoRefresh(){
+  clearInterval(refreshTimer);
+  secondsLeft = REFRESH_INTERVAL;
+  updateRefreshHint();
+  refreshTimer = setInterval(()=>{
+    secondsLeft--;
+    if(secondsLeft <= 0){
+      secondsLeft = REFRESH_INTERVAL;
+      loadOrders(true); // тихое обновление — без спиннера
+    }
+    updateRefreshHint();
+  }, 1000);
+}
+
+function updateRefreshHint(){
+  const el = document.getElementById('refresh-hint');
+  if(el) el.textContent = `обновление через ${secondsLeft} сек`;
+}
+
+async function loadOrders(silent = false){
   const dateStr = toDateStr(currentDate);
-  document.getElementById('orders-list').innerHTML = '<div class="loading">Загрузка...</div>';
-  document.getElementById('stat-total').textContent = '—';
-  document.getElementById('stat-active').textContent = '—';
-  document.getElementById('stat-revenue').textContent = '—';
+  if(!silent){
+    document.getElementById('orders-list').innerHTML = '<div class="loading">Загрузка...</div>';
+    document.getElementById('stat-total').textContent = '—';
+    document.getElementById('stat-active').textContent = '—';
+    document.getElementById('stat-revenue').textContent = '—';
+  }
 
   try{
     const r = await fetch(BACKEND+`/admin/orders?date=${dateStr}`, {headers: apiHeaders()});
     const d = await r.json();
-    if(!d.ok){ renderError(); return; }
+    if(!d.ok){ if(!silent) renderError(); return; }
     renderStats(d.orders, d.revenue);
     renderOrders(d.orders);
-  }catch(e){ renderError(); }
+  }catch(e){ if(!silent) renderError(); }
 }
 
 function renderError(){
@@ -259,37 +305,46 @@ function renderOrders(orders){
     el.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Заказов нет</div></div>';
     return;
   }
+
+  // Запоминаем, какие карточки раскрыты, чтобы не схлопнуть при тихом обновлении
+  const openIds = new Set(
+    [...document.querySelectorAll('.order-body.open')].map(el => el.id.replace('ob-',''))
+  );
+
   el.innerHTML = orders.map(o => {
-    const st = STATUS_MAP[o.status] || {label: o.status, cls:'s-new'};
+    const st = STATUS_MAP[o.status] || {label: esc(o.status), cls:'s-new'};
     const time = o.created_at ? o.created_at.slice(11,16) : '';
+
     const itemsHtml = o.items.map(item => {
-      const price = item.price * item.qty;
+      const price = (item.price ?? 0) * (item.qty ?? 1);
       let extra = '';
       if(item.custom){
         const parts = [];
-        if(item.base) parts.push(item.base);
-        if(item.fillings?.length) parts.push(item.fillings.join(', '));
-        if(item.toppings?.length) parts.push(item.toppings.join(', '));
+        if(item.base) parts.push(esc(item.base));
+        if(item.fillings?.length) parts.push(item.fillings.map(esc).join(', '));
+        if(item.toppings?.length) parts.push(item.toppings.map(esc).join(', '));
         if(parts.length) extra = `<div class="order-custom">${parts.join(' · ')}</div>`;
       }
       return `<div class="order-item">
-        <span class="order-item-name">${item.name} ×${item.qty}</span>
+        <span class="order-item-name">${esc(item.name)} ×${esc(item.qty)}</span>
         <span class="order-item-price">${price}₽</span>
       </div>${extra}`;
     }).join('');
 
+    const isOpen = openIds.has(String(o.id));
+
     return `<div class="order-card">
-      <div class="order-head" onclick="toggleOrder(${o.id})">
+      <div class="order-head" onclick="toggleOrder(${Number(o.id)})">
         <div>
-          <div class="order-id">#${o.id} — ${o.name}</div>
-          <div class="order-meta">📍 ${o.location} · 📞 ${o.phone}${time?' · '+time:''}</div>
+          <div class="order-id">#${Number(o.id)} — ${esc(o.name)}</div>
+          <div class="order-meta">📍 ${esc(o.location)} · 📞 ${esc(o.phone)}${time?' · '+esc(time):''}</div>
         </div>
         <div class="order-right">
-          <div class="order-total">${o.total}₽</div>
+          <div class="order-total">${Number(o.total)}₽</div>
           <span class="status-badge ${st.cls}">${st.label}</span>
         </div>
       </div>
-      <div class="order-body" id="ob-${o.id}">
+      <div class="order-body${isOpen?' open':''}" id="ob-${Number(o.id)}">
         ${itemsHtml}
       </div>
     </div>`;
@@ -305,6 +360,7 @@ function toggleOrder(id){
 renderDate();
 loadStatus();
 loadOrders();
+startAutoRefresh();
 </script>
 </body>
 </html>
