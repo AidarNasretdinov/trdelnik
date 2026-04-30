@@ -693,11 +693,18 @@ function confirmOrder(){
   .then(r=>r.json())
   .then(res=>{
     if(res.ok){
+      // Очищаем корзину и кастомные позиции
+      Object.keys(cart).forEach(k=>delete cart[k]);
+      Object.keys(customItems).forEach(k=>delete customItems[k]);
+      customCnt=0;
       closeContactForm();
+      updateCart();
       if(window.Telegram?.WebApp) Telegram.WebApp.close();
       else alert('Заказ оформлен! Ожидайте сообщения в чате 🙏');
     } else if(res.error==='orders_closed'){
       alert('😔 Приём заказов сейчас приостановлен. Попробуйте позже!');
+    } else if(res.error==='no_user_id'){
+      alert('Для оформления заказа откройте меню через кнопку «🥐 Открыть меню» в чате — напишите боту /start.');
     } else {
       alert('Ошибка при оформлении заказа. Попробуйте ещё раз.');
     }
