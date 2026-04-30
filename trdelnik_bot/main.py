@@ -12,9 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    KeyboardButton,
     MenuButtonWebApp,
-    ReplyKeyboardMarkup,
     Update,
     WebAppInfo,
 )
@@ -132,13 +130,10 @@ async def update_github_status(open_status: bool) -> bool:
 # ── Bot commands ───────────────────────────────────────────────────────────────
 
 async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    kb = ReplyKeyboardMarkup(
-        [[KeyboardButton("🥐 Открыть меню", web_app=WebAppInfo(url=WEBAPP_URL))]],
-        resize_keyboard=True,
-    )
     await update.message.reply_text(
-        "Привет! Нажми кнопку ниже, чтобы открыть меню Трдельников 👇",
-        reply_markup=kb,
+        "Привет! 👋\n\n"
+        "Добро пожаловать в Трдельник 🥐\n\n"
+        "Нажми кнопку «🥐 Меню» в левом верхнем углу чата, чтобы открыть меню и сделать заказ."
     )
 
 
@@ -337,9 +332,6 @@ async def receive_order(request: Request):
         telegram_user_id = tg_user_id_hint
         print(f"[ORDER] using tgUserId fallback: {telegram_user_id}")
 
-    if not telegram_user_id:
-        return {"ok": False, "error": "no_user_id", "detail": "Could not identify Telegram user"}
-
     if not orders_open:
         return {"ok": False, "error": "orders_closed"}
 
@@ -364,14 +356,17 @@ async def receive_order(request: Request):
     if cold:
         customer_text += "\n\n🍦 Мороженое/взбитые сливки добавим прямо при вас!"
 
-    try:
-        customer_msg = await tg_app.bot.send_message(
-            chat_id=telegram_user_id, text=customer_text
-        )
-        customer_msg_id = customer_msg.message_id
-    except Exception as e:
-        print(f"[ORDER] failed to send customer message: {e}")
-        customer_msg_id = None
+    customer_msg_id = None
+    if telegram_user_id:
+        try:
+            customer_msg = await tg_app.bot.send_message(
+                chat_id=telegram_user_id, text=customer_text
+            )
+            customer_msg_id = customer_msg.message_id
+        except Exception as e:
+            print(f"[ORDER] failed to send customer message: {e}")
+    else:
+        print(f"[ORDER] no telegram_user_id — skipping customer notification")
 
     # Уведомление владельцу
     owner_text = "🆕 Новый заказ!\n\n" + format_order(data_fmt, oid)
