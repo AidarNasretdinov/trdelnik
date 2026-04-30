@@ -319,14 +319,22 @@ async def receive_order(request: Request):
     if init_data:
         parsed = verify_init_data(init_data, BOT_TOKEN)
         if not parsed:
+            print(f"[ORDER] initData verification FAILED")
             raise HTTPException(status_code=403, detail="Invalid Telegram initData")
         user = parsed.get("user", {})
         if isinstance(user, str):
-            user = json.loads(user)
+            try:
+                user = json.loads(user)
+            except Exception:
+                user = {}
         telegram_user_id = user.get("id", 0)
+        print(f"[ORDER] telegram_user_id from initData: {telegram_user_id}")
     else:
-        # Разработка / тест без Telegram — можно передать id вручную
         telegram_user_id = order_data.get("telegram_user_id", 0)
+        print(f"[ORDER] no initData, telegram_user_id: {telegram_user_id}")
+
+    if not telegram_user_id:
+        return {"ok": False, "error": "no_user_id", "detail": "Could not identify Telegram user"}
 
     if not orders_open:
         return {"ok": False, "error": "orders_closed"}
@@ -338,6 +346,7 @@ async def receive_order(request: Request):
     total    = order_data.get("total", 0)
 
     oid = create_order(telegram_user_id, name, phone, location, items, total)
+    print(f"[ORDER] created order #{oid} for user {telegram_user_id}")
 
     data_fmt = {"name": name, "phone": phone, "location": location, "items": items, "total": total}
     cold     = has_cold_filling(data_fmt)
@@ -351,9 +360,14 @@ async def receive_order(request: Request):
     if cold:
         customer_text += "\n\n🍦 Мороженое/взбитые сливки добавим прямо при вас!"
 
-    customer_msg = await tg_app.bot.send_message(
-        chat_id=telegram_user_id, text=customer_text
-    )
+    try:
+        customer_msg = await tg_app.bot.send_message(
+            chat_id=telegram_user_id, text=customer_text
+        )
+        customer_msg_id = customer_msg.message_id
+    except Exception as e:
+        print(f"[ORDER] failed to send customer message: {e}")
+        customer_msg_id = None
 
     # Уведомление владельцу
     owner_text = "🆕 Новый заказ!\n\n" + format_order(data_fmt, oid)
@@ -361,14 +375,19 @@ async def receive_order(request: Request):
         InlineKeyboardButton("✅ Принять",   callback_data=f"accept:{oid}"),
         InlineKeyboardButton("❌ Отклонить", callback_data=f"reject:{oid}"),
     ]])
-    owner_msg = await tg_app.bot.send_message(
-        chat_id=OWNER_CHAT_ID, text=owner_text, reply_markup=owner_kb
-    )
+    try:
+        owner_msg = await tg_app.bot.send_message(
+            chat_id=OWNER_CHAT_ID, text=owner_text, reply_markup=owner_kb
+        )
+        owner_msg_id = owner_msg.message_id
+    except Exception as e:
+        print(f"[ORDER] failed to send owner message: {e}")
+        owner_msg_id = None
 
     update_order(
         oid,
-        customer_msg_id=customer_msg.message_id,
-        owner_msg_id=owner_msg.message_id,
+        customer_msg_id=customer_msg_id,
+        owner_msg_id=owner_msg_id,
     )
 
     return {"ok": True, "order_id": oid}
