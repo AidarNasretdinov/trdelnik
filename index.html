@@ -670,18 +670,13 @@ function confirmOrder(){
   const data={name,phone,location:selectedLoc,items,total};
   try{
     if(window.Telegram&&window.Telegram.WebApp){
-      const twa=Telegram.WebApp;
-      if(twa.initDataUnsafe&&twa.initDataUnsafe.query_id){
-        twa.sendData(JSON.stringify(data));
-      } else {
-        alert('Чтобы оформить заказ, откройте меню через кнопку «🥐 Открыть меню» в чате (напишите /start боту).');
-      }
+      Telegram.WebApp.sendData(JSON.stringify(data));
     } else {
       alert(`Заказ оформлен!\n📍 ${selectedLoc}\n${name} · ${phone}\nИтого: ${total.toLocaleString('ru')} ₽`);
       closeContactForm();
     }
   } catch(e){
-    alert('Ошибка при отправке. Попробуйте открыть меню через /start.');
+    alert('Ошибка при отправке заказа. Пожалуйста, откройте меню через кнопку «🥐 Открыть меню» в чате.');
     console.error('sendData error:',e);
   }
 }
