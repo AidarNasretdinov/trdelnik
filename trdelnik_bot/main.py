@@ -173,7 +173,6 @@ async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
 
     action, oid_str = query.data.split(":", 1)
     oid   = int(oid_str)
@@ -182,6 +181,8 @@ async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not order:
         await query.answer("Заказ не найден.", show_alert=True)
         return
+
+    await query.answer()
 
     customer_id = order["telegram_user_id"]
     name        = order["name"]
@@ -213,7 +214,11 @@ async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         msg = f"👨‍🍳 {name}, ваш заказ #{oid} принят в работу!\nСкоро всё будет готово 🔥"
         if cold:
             msg += "\n\n🍦 Мороженое/сливки добавим прямо при вас — не переживайте!"
-        await ctx.bot.send_message(chat_id=customer_id, text=msg)
+        if customer_id:
+            try:
+                await ctx.bot.send_message(chat_id=customer_id, text=msg)
+            except Exception as e:
+                print(f"[CALLBACK] accept: failed to notify customer: {e}")
 
     # ── Готово через 10 минут ─────────────────────────────────────────────────
     elif action == "tenmin":
@@ -229,10 +234,14 @@ async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             text="⏱ Готовится\n\n" + format_order(data, oid),
             reply_markup=kb,
         )
-        await ctx.bot.send_message(
-            chat_id=customer_id,
-            text=f"⏱ {name}, ваш заказ #{oid} будет готов примерно через 10 минут!\nПодходите 🚶",
-        )
+        if customer_id:
+            try:
+                await ctx.bot.send_message(
+                    chat_id=customer_id,
+                    text=f"⏱ {name}, ваш заказ #{oid} будет готов примерно через 10 минут!\nПодходите 🚶",
+                )
+            except Exception as e:
+                print(f"[CALLBACK] tenmin: failed to notify customer: {e}")
 
     # ── Выдать заказ ─────────────────────────────────────────────────────────
     elif action == "ready":
@@ -246,7 +255,11 @@ async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         msg = f"🎉 {name}, ваш заказ #{oid} готов! Можно забирать 🥐"
         if cold:
             msg += "\n\n🍦 Подходите — добавим мороженое/сливки прямо при вас!"
-        await ctx.bot.send_message(chat_id=customer_id, text=msg)
+        if customer_id:
+            try:
+                await ctx.bot.send_message(chat_id=customer_id, text=msg)
+            except Exception as e:
+                print(f"[CALLBACK] ready: failed to notify customer: {e}")
 
     # ── Отклонить ─────────────────────────────────────────────────────────────
     elif action == "reject":
@@ -256,13 +269,17 @@ async def on_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         update_order(oid, status="rejected")
 
         await query.edit_message_text(text="❌ Отклонён\n\n" + format_order(data, oid))
-        await ctx.bot.send_message(
-            chat_id=customer_id,
-            text=(
-                f"😔 {name}, к сожалению ваш заказ #{oid} был отклонён.\n"
-                "Пожалуйста, свяжитесь с нами для уточнения деталей."
-            ),
-        )
+        if customer_id:
+            try:
+                await ctx.bot.send_message(
+                    chat_id=customer_id,
+                    text=(
+                        f"😔 {name}, к сожалению ваш заказ #{oid} был отклонён.\n"
+                        "Пожалуйста, свяжитесь с нами для уточнения деталей."
+                    ),
+                )
+            except Exception as e:
+                print(f"[CALLBACK] reject: failed to notify customer: {e}")
 
 
 # ── Register handlers ──────────────────────────────────────────────────────────
@@ -276,9 +293,27 @@ tg_app.add_handler(CallbackQueryHandler(on_callback))
 
 # ── FastAPI ────────────────────────────────────────────────────────────────────
 
+async def sync_orders_open_from_github():
+    """Читает status.json с GitHub при старте, чтобы восстановить состояние после рестарта."""
+    global orders_open
+    if not GITHUB_TOKEN:
+        return
+    try:
+        url = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/main/status.json"
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(url)
+            if r.status_code == 200:
+                data = r.json()
+                orders_open = data.get("open", True)
+                print(f"[STARTUP] orders_open synced from GitHub: {orders_open}")
+    except Exception as e:
+        print(f"[STARTUP] failed to sync orders_open from GitHub: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    await sync_orders_open_from_github()
     await tg_app.initialize()
     await tg_app.start()
     await tg_app.updater.start_polling()
